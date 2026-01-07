@@ -1,0 +1,211 @@
+import { z } from 'zod';
+
+// Ping Request Schema
+export const PingRequestSchema = z.object({
+  message: z.string().min(1, 'Message cannot be empty'),
+  timestamp: z.number().int().positive(),
+});
+
+// Pong Response Schema
+export const PongResponseSchema = z.object({
+  originalMessage: z.string(),
+  reply: z.string(),
+  timestamp: z.number().int().positive(),
+});
+
+// IPC Response Schema (generic wrapper)
+export const IPCResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.object({
+    success: z.boolean(),
+    data: dataSchema.optional(),
+    error: z.string().optional(),
+  });
+
+// Type inference helpers
+export type PingRequest = z.infer<typeof PingRequestSchema>;
+export type PongResponse = z.infer<typeof PongResponseSchema>;
+
+// ============================================================================
+// Connection Management Schemas
+// ============================================================================
+
+// Auth Type Enum
+export const AuthTypeSchema = z.enum(['none', 'token', 'basic']);
+export type AuthType = z.infer<typeof AuthTypeSchema>;
+
+// Connection Profile Schema (stored in electron-store, NOT containing credentials)
+export const ConnectionProfileSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1, 'Connection name is required').max(100),
+  host: z.string().min(1, 'Host is required'),
+  port: z.number().int().min(1).max(65535),
+  authType: AuthTypeSchema,
+  useSSL: z.boolean().default(false),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type ConnectionProfile = z.infer<typeof ConnectionProfileSchema>;
+
+// Connection Credential Schema (stored in OS keychain via keytar, NEVER in files)
+export const ConnectionCredentialSchema = z.object({
+  connectionId: z.string().uuid(),
+  token: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+});
+
+export type ConnectionCredential = z.infer<typeof ConnectionCredentialSchema>;
+
+// Create Connection Request Schema (used when creating a new connection)
+export const CreateConnectionRequestSchema = z.object({
+  name: z.string().min(1, 'Connection name is required').max(100),
+  host: z.string().min(1, 'Host is required'),
+  port: z.number().int().min(1).max(65535),
+  authType: AuthTypeSchema,
+  useSSL: z.boolean().default(false),
+  // Credentials (will be stored separately in keychain)
+  token: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+});
+
+export type CreateConnectionRequest = z.infer<typeof CreateConnectionRequestSchema>;
+
+// Update Connection Request Schema
+export const UpdateConnectionRequestSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(100).optional(),
+  host: z.string().min(1).optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+  authType: AuthTypeSchema.optional(),
+  useSSL: z.boolean().optional(),
+  // Credentials (will be stored separately in keychain)
+  token: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+});
+
+export type UpdateConnectionRequest = z.infer<typeof UpdateConnectionRequestSchema>;
+
+// Test Connection Request Schema
+export const TestConnectionRequestSchema = z.object({
+  host: z.string().min(1, 'Host is required'),
+  port: z.number().int().min(1).max(65535),
+  authType: AuthTypeSchema,
+  useSSL: z.boolean().default(false),
+  token: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+});
+
+export type TestConnectionRequest = z.infer<typeof TestConnectionRequestSchema>;
+
+// Connection Status Schema
+export const ConnectionStatusSchema = z.object({
+  connectionId: z.string().uuid(),
+  connected: z.boolean(),
+  lastHeartbeat: z.string().datetime().optional(),
+  error: z.string().optional(),
+});
+
+export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;
+
+// ============================================================================
+// Collection Management Schemas
+// ============================================================================
+
+// Collection Metadata Schema
+export const CollectionMetadataSchema = z.record(z.any()).optional();
+
+// Distance Function Enum
+export const DistanceFunctionSchema = z.enum(['l2', 'cosine', 'ip']);
+export type DistanceFunction = z.infer<typeof DistanceFunctionSchema>;
+
+// Embedding Function Enum
+export const EmbeddingFunctionSchema = z.enum(['default', 'openai', 'sentence-transformers']);
+export type EmbeddingFunction = z.infer<typeof EmbeddingFunctionSchema>;
+
+// Collection Schema
+export const CollectionSchema = z.object({
+  name: z.string().min(1).max(63).regex(/^[a-zA-Z0-9_]+$/, 'Collection name must be alphanumeric and underscores only'),
+  id: z.string().optional(),
+  metadata: CollectionMetadataSchema,
+  count: z.number().int().nonnegative().optional(),
+});
+
+export type Collection = z.infer<typeof CollectionSchema>;
+
+// Create Collection Request Schema
+export const CreateCollectionRequestSchema = z.object({
+  name: z.string().min(1).max(63).regex(/^[a-zA-Z0-9_]+$/, 'Collection name must be alphanumeric and underscores only'),
+  metadata: CollectionMetadataSchema,
+  embeddingFunction: EmbeddingFunctionSchema.optional(),
+  distanceFunction: DistanceFunctionSchema.optional(),
+});
+
+export type CreateCollectionRequest = z.infer<typeof CreateCollectionRequestSchema>;
+
+// Update Collection Request Schema
+export const UpdateCollectionRequestSchema = z.object({
+  name: z.string().min(1).max(63).regex(/^[a-zA-Z0-9_]+$/),
+  metadata: CollectionMetadataSchema,
+});
+
+export type UpdateCollectionRequest = z.infer<typeof UpdateCollectionRequestSchema>;
+
+// Delete Collection Request Schema
+export const DeleteCollectionRequestSchema = z.object({
+  name: z.string().min(1),
+});
+
+export type DeleteCollectionRequest = z.infer<typeof DeleteCollectionRequestSchema>;
+
+// Get Collection Request Schema
+export const GetCollectionRequestSchema = z.object({
+  name: z.string().min(1),
+});
+
+export type GetCollectionRequest = z.infer<typeof GetCollectionRequestSchema>;
+
+// ============================================================================
+// Document Management Schemas
+// ============================================================================
+
+// Document Schema
+export const DocumentSchema = z.object({
+  id: z.string(),
+  document: z.string().nullable(),
+  metadata: z.record(z.any()).nullable(),
+  embedding: z.array(z.number()).nullable().optional(),
+});
+
+export type Document = z.infer<typeof DocumentSchema>;
+
+// Query Documents Request Schema
+export const QueryDocumentsRequestSchema = z.object({
+  collectionName: z.string().min(1),
+  limit: z.number().int().min(1).max(10000).default(100),
+  offset: z.number().int().min(0).default(0),
+});
+
+export type QueryDocumentsRequest = z.infer<typeof QueryDocumentsRequestSchema>;
+
+// Query Documents Response Schema
+export const QueryDocumentsResponseSchema = z.object({
+  ids: z.array(z.string()),
+  documents: z.array(z.string().nullable()),
+  metadatas: z.array(z.record(z.any()).nullable()),
+  embeddings: z.array(z.array(z.number())).nullable().optional(),
+  total: z.number().int().nonnegative(),
+});
+
+export type QueryDocumentsResponse = z.infer<typeof QueryDocumentsResponseSchema>;
+
+// Get Document Request Schema
+export const GetDocumentRequestSchema = z.object({
+  collectionName: z.string().min(1),
+  documentId: z.string().min(1),
+});
+
+export type GetDocumentRequest = z.infer<typeof GetDocumentRequestSchema>;
