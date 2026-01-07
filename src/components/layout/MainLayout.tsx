@@ -1,8 +1,18 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+import { useGlobalKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 function MainLayout() {
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+
+  // Set up global keyboard shortcuts
+  useGlobalKeyboardShortcuts({
+    onShowHelp: () => setShowKeyboardHelp(true),
+  });
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       {/* Sidebar */}
@@ -18,6 +28,12 @@ function MainLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Keyboard shortcuts help dialog */}
+      <KeyboardShortcutsDialog
+        open={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
+      />
     </div>
   );
 }
