@@ -275,3 +275,61 @@ export const ExecuteQueryResponseSchema = z.object({
 });
 
 export type ExecuteQueryResponse = z.infer<typeof ExecuteQueryResponseSchema>;
+
+// ============================================================================
+// Document CRUD Schemas
+// ============================================================================
+
+// Add Document Request Schema
+export const AddDocumentRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+  id: z.string().optional(),
+  document: z.string().min(1, 'Document text is required'),
+  metadata: z.record(z.any()).optional(),
+  embedding: z.array(z.number()).optional(),
+});
+
+export type AddDocumentRequest = z.infer<typeof AddDocumentRequestSchema>;
+
+// Update Document Request Schema
+export const UpdateDocumentRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+  documentId: z.string().min(1, 'Document ID is required'),
+  document: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+  embedding: z.array(z.number()).optional(),
+});
+
+export type UpdateDocumentRequest = z.infer<typeof UpdateDocumentRequestSchema>;
+
+// Delete Documents Request Schema
+export const DeleteDocumentsRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+  documentIds: z.array(z.string().min(1)).min(1, 'At least one document ID is required'),
+});
+
+export type DeleteDocumentsRequest = z.infer<typeof DeleteDocumentsRequestSchema>;
+
+// Bulk Import Request Schema
+export const BulkImportRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+  documents: z.array(
+    z.object({
+      id: z.string().optional(),
+      document: z.string().min(1, 'Document text is required'),
+      metadata: z.record(z.any()).optional(),
+      embedding: z.array(z.number()).optional(),
+    })
+  ).min(1, 'At least one document is required'),
+});
+
+export type BulkImportRequest = z.infer<typeof BulkImportRequestSchema>;
+
+// Bulk Import Response Schema
+export const BulkImportResponseSchema = z.object({
+  importedCount: z.number().int().nonnegative(),
+  failedCount: z.number().int().nonnegative(),
+  errors: z.array(z.string()).optional(),
+});
+
+export type BulkImportResponse = z.infer<typeof BulkImportResponseSchema>;

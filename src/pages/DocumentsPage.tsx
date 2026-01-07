@@ -1,28 +1,12 @@
 import { useState } from 'react';
 import { CollectionList } from '../components/collections/CollectionList';
 import { DocumentGrid } from '../components/documents/DocumentGrid';
-import type { Document as ChromaDocument } from '../../shared/schemas';
 
 function DocumentsPage() {
   const [selectedCollection, setSelectedCollection] = useState<string | undefined>();
 
   const handleSelectCollection = (collectionName: string) => {
     setSelectedCollection(collectionName);
-  };
-
-  const handleAddDocument = () => {
-    // TODO: Implement in Phase 6
-    console.log('Add document to', selectedCollection);
-  };
-
-  const handleEditDocument = (document: ChromaDocument) => {
-    // TODO: Implement in Phase 6
-    console.log('Edit document', document.id);
-  };
-
-  const handleDeleteDocuments = (documentIds: string[]) => {
-    // TODO: Implement in Phase 6 with confirmation dialog
-    console.log('Delete documents', documentIds);
   };
 
   return (
@@ -50,12 +34,7 @@ function DocumentsPage() {
       {/* Main Content: Document Grid */}
       <div className="flex-1">
         {selectedCollection ? (
-          <DocumentGrid
-            collectionName={selectedCollection}
-            onAddDocument={handleAddDocument}
-            onEditDocument={handleEditDocument}
-            onDeleteDocuments={handleDeleteDocuments}
-          />
+          <DocumentGrid collectionName={selectedCollection} />
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">

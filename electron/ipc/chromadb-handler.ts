@@ -11,8 +11,14 @@ import {
   Document,
   ExecuteQueryRequestSchema,
   ExecuteQueryResponse,
+  AddDocumentRequestSchema,
+  UpdateDocumentRequestSchema,
+  DeleteDocumentsRequestSchema,
+  BulkImportRequestSchema,
+  BulkImportResponse,
 } from '../../shared/schemas';
 import { connectionManager } from '../services/connection-manager';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Register all ChromaDB collection-related IPC handlers
@@ -598,6 +604,232 @@ export function registerChromaDBHandlers(): void {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to execute query',
+      };
+    }
+  });
+
+  // ============================================================================
+  // document:add - Add a document to a collection
+  // ============================================================================
+  ipcMain.handle('document:add', async (_, requestData) => {
+    try {
+      const request = AddDocumentRequestSchema.parse(requestData);
+
+      const client = connectionManager.getActiveClient();
+
+      if (!client) {
+        return {
+          success: false,
+          error: 'No active connection. Please connect to a ChromaDB instance first.',
+        };
+      }
+
+      const collection = await client.getCollection({ name: request.collectionName });
+
+      if (!collection) {
+        return {
+          success: false,
+          error: `Collection '${request.collectionName}' not found`,
+        };
+      }
+
+      // Generate ID if not provided
+      const documentId = request.id || uuidv4();
+
+      // Add document
+      await collection.add({
+        ids: [documentId],
+        documents: [request.document],
+        metadatas: request.metadata ? [request.metadata] : undefined,
+        embeddings: request.embedding ? [request.embedding] : undefined,
+      });
+
+      return {
+        success: true,
+        data: { documentId },
+      };
+    } catch (error) {
+      console.error('document:add error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to add document',
+      };
+    }
+  });
+
+  // ============================================================================
+  // document:update - Update a document
+  // ============================================================================
+  ipcMain.handle('document:update', async (_, requestData) => {
+    try {
+      const request = UpdateDocumentRequestSchema.parse(requestData);
+
+      const client = connectionManager.getActiveClient();
+
+      if (!client) {
+        return {
+          success: false,
+          error: 'No active connection. Please connect to a ChromaDB instance first.',
+        };
+      }
+
+      const collection = await client.getCollection({ name: request.collectionName });
+
+      if (!collection) {
+        return {
+          success: false,
+          error: `Collection '${request.collectionName}' not found`,
+        };
+      }
+
+      // Update document
+      await collection.update({
+        ids: [request.documentId],
+        documents: request.document ? [request.document] : undefined,
+        metadatas: request.metadata ? [request.metadata] : undefined,
+        embeddings: request.embedding ? [request.embedding] : undefined,
+      });
+
+      return {
+        success: true,
+        data: { documentId: request.documentId },
+      };
+    } catch (error) {
+      console.error('document:update error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update document',
+      };
+    }
+  });
+
+  // ============================================================================
+  // document:delete - Delete documents from a collection
+  // ============================================================================
+  ipcMain.handle('document:delete', async (_, requestData) => {
+    try {
+      const request = DeleteDocumentsRequestSchema.parse(requestData);
+
+      const client = connectionManager.getActiveClient();
+
+      if (!client) {
+        return {
+          success: false,
+          error: 'No active connection. Please connect to a ChromaDB instance first.',
+        };
+      }
+
+      const collection = await client.getCollection({ name: request.collectionName });
+
+      if (!collection) {
+        return {
+          success: false,
+          error: `Collection '${request.collectionName}' not found`,
+        };
+      }
+
+      // Delete documents
+      await collection.delete({
+        ids: request.documentIds,
+      });
+
+      return {
+        success: true,
+        data: { deletedCount: request.documentIds.length },
+      };
+    } catch (error) {
+      console.error('document:delete error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete documents',
+      };
+    }
+  });
+
+  // ============================================================================
+  // document:bulk-import - Bulk import documents
+  // ============================================================================
+  ipcMain.handle('document:bulk-import', async (_, requestData) => {
+    try {
+      const request = BulkImportRequestSchema.parse(requestData);
+
+      const client = connectionManager.getActiveClient();
+
+      if (!client) {
+        return {
+          success: false,
+          error: 'No active connection. Please connect to a ChromaDB instance first.',
+        };
+      }
+
+      const collection = await client.getCollection({ name: request.collectionName });
+
+      if (!collection) {
+        return {
+          success: false,
+          error: `Collection '${request.collectionName}' not found`,
+        };
+      }
+
+      const ids: string[] = [];
+      const documents: string[] = [];
+      const metadatas: any[] = [];
+      const embeddings: number[][] = [];
+      const errors: string[] = [];
+      let importedCount = 0;
+      let failedCount = 0;
+
+      // Process each document
+      for (const doc of request.documents) {
+        try {
+          const id = doc.id || uuidv4();
+          ids.push(id);
+          documents.push(doc.document);
+          metadatas.push(doc.metadata || {});
+          if (doc.embedding) {
+            embeddings.push(doc.embedding);
+          }
+        } catch (error) {
+          failedCount++;
+          errors.push(
+            `Failed to process document: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      // Bulk add documents
+      if (ids.length > 0) {
+        try {
+          await collection.add({
+            ids,
+            documents,
+            metadatas,
+            embeddings: embeddings.length > 0 ? embeddings : undefined,
+          });
+          importedCount = ids.length;
+        } catch (error) {
+          failedCount = ids.length;
+          errors.push(
+            `Bulk import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+
+      const response: BulkImportResponse = {
+        importedCount,
+        failedCount,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+
+      return {
+        success: true,
+        data: response,
+      };
+    } catch (error) {
+      console.error('document:bulk-import error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to import documents',
       };
     }
   });

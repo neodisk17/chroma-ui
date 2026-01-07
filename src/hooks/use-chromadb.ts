@@ -8,6 +8,11 @@ import type {
   Document,
   ExecuteQueryRequest,
   ExecuteQueryResponse,
+  AddDocumentRequest,
+  UpdateDocumentRequest,
+  DeleteDocumentsRequest,
+  BulkImportRequest,
+  BulkImportResponse,
 } from '../../shared/schemas';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { useQueryStore } from '@/stores/query-store';
@@ -433,6 +438,165 @@ export function useExecuteQuery() {
       setResults(null);
 
       toast.error(`Query failed: ${errorMessage}`);
+    },
+  });
+}
+
+// ============================================================================
+// Document Mutations
+// ============================================================================
+
+/**
+ * Hook to add a document to a collection
+ * - Shows success/error toasts
+ * - Invalidates documents query on success
+ * - Implements optimistic updates
+ */
+export function useAddDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: AddDocumentRequest): Promise<{ documentId: string }> => {
+      const response = await window.electronAPI.invoke<{ documentId: string }>(
+        IPC_CHANNELS.DOCUMENT_ADD,
+        request
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to add document');
+      }
+
+      return response.data!;
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate documents query for this collection
+      queryClient.invalidateQueries({
+        queryKey: ['documents', variables.collectionName]
+      });
+
+      toast.success('Document added successfully');
+    },
+    onError: (error) => {
+      toast.error(`Failed to add document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    },
+  });
+}
+
+/**
+ * Hook to update a document
+ * - Shows success/error toasts
+ * - Invalidates document queries on success
+ * - Implements optimistic updates
+ */
+export function useUpdateDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateDocumentRequest): Promise<{ documentId: string }> => {
+      const response = await window.electronAPI.invoke<{ documentId: string }>(
+        IPC_CHANNELS.DOCUMENT_UPDATE,
+        request
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update document');
+      }
+
+      return response.data!;
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate documents query for this collection
+      queryClient.invalidateQueries({
+        queryKey: ['documents', variables.collectionName]
+      });
+      // Invalidate specific document query
+      queryClient.invalidateQueries({
+        queryKey: ['document', variables.collectionName, variables.documentId]
+      });
+
+      toast.success('Document updated successfully');
+    },
+    onError: (error) => {
+      toast.error(`Failed to update document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    },
+  });
+}
+
+/**
+ * Hook to delete documents from a collection
+ * - Shows success/error toasts
+ * - Invalidates documents query on success
+ * - Supports bulk delete
+ */
+export function useDeleteDocuments() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: DeleteDocumentsRequest): Promise<{ deletedCount: number }> => {
+      const response = await window.electronAPI.invoke<{ deletedCount: number }>(
+        IPC_CHANNELS.DOCUMENT_DELETE,
+        request
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to delete documents');
+      }
+
+      return response.data!;
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate documents query for this collection
+      queryClient.invalidateQueries({
+        queryKey: ['documents', variables.collectionName]
+      });
+
+      const count = data.deletedCount;
+      toast.success(`${count} ${count === 1 ? 'document' : 'documents'} deleted successfully`);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete documents: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    },
+  });
+}
+
+/**
+ * Hook to bulk import documents
+ * - Shows progress and result toasts
+ * - Invalidates documents query on success
+ */
+export function useBulkImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: BulkImportRequest): Promise<BulkImportResponse> => {
+      const response = await window.electronAPI.invoke<BulkImportResponse>(
+        IPC_CHANNELS.DOCUMENT_BULK_IMPORT,
+        request
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to import documents');
+      }
+
+      return response.data!;
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate documents query for this collection
+      queryClient.invalidateQueries({
+        queryKey: ['documents', variables.collectionName]
+      });
+
+      if (data.failedCount > 0) {
+        toast.warning(
+          `Imported ${data.importedCount} documents, ${data.failedCount} failed`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(`Imported ${data.importedCount} documents successfully`);
+      }
+    },
+    onError: (error) => {
+      toast.error(`Failed to import documents: ${error instanceof Error ? error.message : 'Unknown error'}`);
     },
   });
 }

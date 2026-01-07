@@ -13,6 +13,7 @@ import {
   X,
   Plus,
   RefreshCw,
+  Upload,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -21,13 +22,13 @@ import { Skeleton } from '../ui/skeleton';
 import { Badge } from '../ui/badge';
 import { useDocuments } from '../../hooks/use-chromadb';
 import { DocumentDetail } from './DocumentDetail';
+import { AddEditDocumentDialog } from './AddEditDocumentDialog';
+import { DeleteDocumentDialog } from './DeleteDocumentDialog';
+import { BulkImportDialog } from './BulkImportDialog';
 import type { Document } from '../../../shared/schemas';
 
 interface DocumentGridProps {
   collectionName: string | undefined;
-  onAddDocument?: () => void;
-  onEditDocument?: (document: Document) => void;
-  onDeleteDocuments?: (documentIds: string[]) => void;
 }
 
 // Cell renderer for document text (show preview)
@@ -113,9 +114,6 @@ const ActionsCellRenderer = (params: any) => {
  */
 export const DocumentGrid = React.memo(function DocumentGrid({
   collectionName,
-  onAddDocument,
-  onEditDocument,
-  onDeleteDocuments,
 }: DocumentGridProps) {
   // Pagination state
   const [page, setPage] = useState(0);
@@ -127,6 +125,14 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   // Detail panel state
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+
+  // Dialog states
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteDocumentIds, setDeleteDocumentIds] = useState<string[]>([]);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Grid state
   const [gridApi, setGridApi] = useState<any>(null);
@@ -145,6 +151,18 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     setPage(0);
     setSelectedRows([]);
   }, [collectionName]);
+
+  // Handler for edit document
+  const handleEdit = useCallback((document: Document) => {
+    setEditingDocument(document);
+    setShowEditDialog(true);
+  }, []);
+
+  // Handler for delete document
+  const handleDelete = useCallback((documentIds: string[]) => {
+    setDeleteDocumentIds(documentIds);
+    setShowDeleteDialog(true);
+  }, []);
 
   // Column definitions with memoization
   const columnDefs = useMemo<ColDef[]>(() => {
@@ -180,15 +198,15 @@ export const DocumentGrid = React.memo(function DocumentGrid({
         cellRenderer: ActionsCellRenderer,
         cellRendererParams: {
           onView: handleView,
-          onEdit: onEditDocument,
-          onDelete: onDeleteDocuments,
+          onEdit: handleEdit,
+          onDelete: handleDelete,
         },
         pinned: 'right',
         sortable: false,
         filter: false,
       },
     ];
-  }, [onEditDocument, onDeleteDocuments]);
+  }, [handleEdit, handleDelete]);
 
   // Convert data to row format
   const rowData = useMemo(() => {
@@ -287,12 +305,12 @@ export const DocumentGrid = React.memo(function DocumentGrid({
 
   // Delete selected
   const handleDeleteSelected = useCallback(() => {
-    if (selectedRows.length > 0 && onDeleteDocuments) {
+    if (selectedRows.length > 0) {
       const ids = selectedRows.map((row: any) => row.id);
-      onDeleteDocuments(ids);
+      handleDelete(ids);
       handleClearSelection();
     }
-  }, [selectedRows, onDeleteDocuments, handleClearSelection]);
+  }, [selectedRows, handleDelete, handleClearSelection]);
 
   // Loading skeleton
   if (isLoading && !data) {
@@ -331,12 +349,10 @@ export const DocumentGrid = React.memo(function DocumentGrid({
           <p className="text-sm text-muted-foreground">
             Add your first document to get started
           </p>
-          {onAddDocument && (
-            <Button onClick={onAddDocument}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Document
-            </Button>
-          )}
+          <Button onClick={() => setShowAddDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Document
+          </Button>
         </div>
       </div>
     );
@@ -358,12 +374,14 @@ export const DocumentGrid = React.memo(function DocumentGrid({
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          {onAddDocument && (
-            <Button size="sm" onClick={onAddDocument}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Document
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button size="sm" onClick={() => setShowAddDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Document
+          </Button>
         </div>
       </div>
 
@@ -389,16 +407,14 @@ export const DocumentGrid = React.memo(function DocumentGrid({
               <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
-            {onDeleteDocuments && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteSelected}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Selected
-              </Button>
-            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected
+            </Button>
           </div>
         </div>
       )}
@@ -490,15 +506,58 @@ export const DocumentGrid = React.memo(function DocumentGrid({
       </div>
 
       {/* Document detail panel */}
-      {showDetail && (
+      {showDetail && selectedDocument && (
         <DocumentDetail
           document={selectedDocument}
           onClose={() => {
             setShowDetail(false);
             setSelectedDocument(null);
           }}
-          onEdit={onEditDocument}
-          onDelete={onDeleteDocuments ? (id) => onDeleteDocuments([id]) : undefined}
+          onEdit={(doc) => handleEdit(doc)}
+          onDelete={(id) => handleDelete([id])}
+        />
+      )}
+
+      {/* Add/Edit Document Dialog */}
+      {showAddDialog && (
+        <AddEditDocumentDialog
+          open={showAddDialog}
+          onClose={() => setShowAddDialog(false)}
+          collectionName={collectionName!}
+        />
+      )}
+
+      {showEditDialog && editingDocument && (
+        <AddEditDocumentDialog
+          open={showEditDialog}
+          onClose={() => {
+            setShowEditDialog(false);
+            setEditingDocument(null);
+          }}
+          collectionName={collectionName!}
+          document={editingDocument}
+        />
+      )}
+
+      {/* Delete Document Dialog */}
+      {showDeleteDialog && (
+        <DeleteDocumentDialog
+          open={showDeleteDialog}
+          onClose={() => {
+            setShowDeleteDialog(false);
+            setDeleteDocumentIds([]);
+          }}
+          collectionName={collectionName!}
+          documentIds={deleteDocumentIds}
+        />
+      )}
+
+      {/* Bulk Import Dialog */}
+      {showImportDialog && (
+        <BulkImportDialog
+          open={showImportDialog}
+          onClose={() => setShowImportDialog(false)}
+          collectionName={collectionName!}
         />
       )}
     </div>
