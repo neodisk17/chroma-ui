@@ -9,6 +9,8 @@ import {
   QueryDocumentsResponse,
   GetDocumentRequestSchema,
   Document,
+  ExecuteQueryRequestSchema,
+  ExecuteQueryResponse,
 } from '../../shared/schemas';
 import { connectionManager } from '../services/connection-manager';
 
@@ -444,6 +446,158 @@ export function registerChromaDBHandlers(): void {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get document',
+      };
+    }
+  });
+
+  // ============================================================================
+  // query:execute - Execute a query on a collection
+  // ============================================================================
+  ipcMain.handle('query:execute', async (_, requestData) => {
+    try {
+      // Validate input
+      const request = ExecuteQueryRequestSchema.parse(requestData);
+
+      const client = connectionManager.getActiveClient();
+
+      if (!client) {
+        return {
+          success: false,
+          error: 'No active connection. Please connect to a ChromaDB instance first.',
+        };
+      }
+
+      // Get collection
+      const collection = await client.getCollection({ name: request.collectionName });
+
+      if (!collection) {
+        return {
+          success: false,
+          error: `Collection '${request.collectionName}' not found`,
+        };
+      }
+
+      // Build query based on type
+      let results: any;
+
+      if (request.queryType === 'similarity' || request.queryType === 'combined') {
+        // Similarity search with optional filters
+        if (!request.queryText && !request.embeddingVector) {
+          return {
+            success: false,
+            error: 'Query text or embedding vector is required for similarity search',
+          };
+        }
+
+        // Build where clause from metadata filters
+        let where: any = undefined;
+        if (request.metadataFilters && request.metadataFilters.length > 0) {
+          where = {};
+          request.metadataFilters.forEach((filter) => {
+            where[filter.field] = { [filter.operator]: filter.value };
+          });
+        }
+
+        // Build whereDocument clause from document filters
+        let whereDocument: any = undefined;
+        if (request.documentFilters && request.documentFilters.length > 0) {
+          whereDocument = {};
+          request.documentFilters.forEach((filter, index) => {
+            whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
+          });
+        }
+
+        // Execute query
+        if (request.queryText) {
+          // Query with text
+          results = await collection.query({
+            queryTexts: [request.queryText],
+            nResults: request.nResults,
+            where,
+            whereDocument,
+          });
+        } else if (request.embeddingVector) {
+          // Query with embedding
+          results = await collection.query({
+            queryEmbeddings: [request.embeddingVector],
+            nResults: request.nResults,
+            where,
+            whereDocument,
+          });
+        }
+      } else if (request.queryType === 'filter') {
+        // Filter-only query (no similarity search)
+        let where: any = undefined;
+        if (request.metadataFilters && request.metadataFilters.length > 0) {
+          where = {};
+          request.metadataFilters.forEach((filter) => {
+            where[filter.field] = { [filter.operator]: filter.value };
+          });
+        }
+
+        let whereDocument: any = undefined;
+        if (request.documentFilters && request.documentFilters.length > 0) {
+          whereDocument = {};
+          request.documentFilters.forEach((filter, index) => {
+            whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
+          });
+        }
+
+        // Use get() instead of query() for filter-only
+        results = await collection.get({
+          where,
+          whereDocument,
+          limit: request.nResults,
+        });
+
+        // Transform get() results to match query() format
+        results = {
+          ids: [results.ids],
+          documents: [results.documents],
+          metadatas: [results.metadatas],
+          distances: [results.ids.map(() => undefined)], // No distances for filter-only queries
+        };
+      }
+
+      // Format results
+      const formattedResults: ExecuteQueryResponse = {
+        results: [],
+        count: 0,
+      };
+
+      if (results && results.ids && results.ids[0]) {
+        const ids = results.ids[0];
+        const documents = results.documents?.[0] || [];
+        const metadatas = results.metadatas?.[0] || [];
+        const distances = results.distances?.[0] || [];
+
+        formattedResults.results = ids.map((id: string, index: number) => ({
+          id,
+          document: documents[index] || null,
+          metadata: metadatas[index] || null,
+          distance: distances[index],
+        }));
+        formattedResults.count = ids.length;
+      }
+
+      return {
+        success: true,
+        data: formattedResults,
+      };
+    } catch (error) {
+      console.error('query:execute error:', error);
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist')) {
+        return {
+          success: false,
+          error: `The collection '${(requestData as any).collectionName}' does not exist`,
+        };
+      }
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to execute query',
       };
     }
   });

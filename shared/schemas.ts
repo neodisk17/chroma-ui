@@ -209,3 +209,69 @@ export const GetDocumentRequestSchema = z.object({
 });
 
 export type GetDocumentRequest = z.infer<typeof GetDocumentRequestSchema>;
+
+// ============================================================================
+// Query Execution Schemas
+// ============================================================================
+
+// Query Type Enum
+export const QueryTypeSchema = z.enum(['similarity', 'filter', 'combined']);
+export type QueryType = z.infer<typeof QueryTypeSchema>;
+
+// Filter Operator Enum
+export const FilterOperatorSchema = z.enum(['$eq', '$ne', '$gt', '$gte', '$lt', '$lte', '$in', '$nin']);
+export type FilterOperator = z.infer<typeof FilterOperatorSchema>;
+
+// Document Filter Operator Enum
+export const DocumentFilterOperatorSchema = z.enum(['$contains', '$not_contains']);
+export type DocumentFilterOperator = z.infer<typeof DocumentFilterOperatorSchema>;
+
+// Metadata Filter Condition Schema
+export const MetadataFilterSchema = z.object({
+  field: z.string().min(1, 'Field name is required'),
+  operator: FilterOperatorSchema,
+  value: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))]),
+});
+
+export type MetadataFilter = z.infer<typeof MetadataFilterSchema>;
+
+// Document Filter Condition Schema
+export const DocumentFilterSchema = z.object({
+  operator: DocumentFilterOperatorSchema,
+  value: z.string().min(1, 'Filter value is required'),
+});
+
+export type DocumentFilter = z.infer<typeof DocumentFilterSchema>;
+
+// Execute Query Request Schema
+export const ExecuteQueryRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+  queryType: QueryTypeSchema,
+  // Similarity search params
+  queryText: z.string().optional(),
+  embeddingVector: z.array(z.number()).optional(),
+  nResults: z.number().int().min(1).max(1000).default(10),
+  // Filter params
+  metadataFilters: z.array(MetadataFilterSchema).optional(),
+  documentFilters: z.array(DocumentFilterSchema).optional(),
+});
+
+export type ExecuteQueryRequest = z.infer<typeof ExecuteQueryRequestSchema>;
+
+// Query Result Schema
+export const QueryResultSchema = z.object({
+  id: z.string(),
+  document: z.string().nullable(),
+  metadata: z.record(z.any()).nullable(),
+  distance: z.number().optional(),
+});
+
+export type QueryResult = z.infer<typeof QueryResultSchema>;
+
+// Execute Query Response Schema
+export const ExecuteQueryResponseSchema = z.object({
+  results: z.array(QueryResultSchema),
+  count: z.number().int().nonnegative(),
+});
+
+export type ExecuteQueryResponse = z.infer<typeof ExecuteQueryResponseSchema>;

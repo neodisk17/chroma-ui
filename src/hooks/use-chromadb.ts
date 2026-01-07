@@ -6,8 +6,11 @@ import type {
   UpdateCollectionRequest,
   QueryDocumentsResponse,
   Document,
+  ExecuteQueryRequest,
+  ExecuteQueryResponse,
 } from '../../shared/schemas';
 import { IPC_CHANNELS } from '../../shared/constants';
+import { useQueryStore } from '@/stores/query-store';
 
 // Type for IPC response
 interface IPCResponse<T> {
@@ -355,7 +358,7 @@ export function useDocuments(
     enabled: !!collectionName, // Only run query if collection name is provided
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchOnWindowFocus: true,
-    keepPreviousData: true, // Keep previous data when changing pages
+    placeholderData: (previousData) => previousData, // Keep previous data when changing pages
   });
 }
 
@@ -385,5 +388,51 @@ export function useDocument(collectionName: string | undefined, documentId: stri
     },
     enabled: !!collectionName && !!documentId, // Only run query if both are provided
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// ============================================================================
+// Query Execution
+// ============================================================================
+
+/**
+ * Hook to execute a query on a collection
+ * - Shows success/error toasts
+ * - Updates query store with results
+ * - Handles loading and error states
+ */
+export function useExecuteQuery() {
+  const { setResults, setIsExecuting, setError } = useQueryStore();
+
+  return useMutation({
+    mutationFn: async (request: ExecuteQueryRequest): Promise<ExecuteQueryResponse> => {
+      setIsExecuting(true);
+      setError(null);
+
+      const response = await window.electronAPI.invoke<ExecuteQueryResponse>(
+        IPC_CHANNELS.QUERY_EXECUTE,
+        request
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to execute query');
+      }
+
+      return response.data!;
+    },
+    onSuccess: (data) => {
+      setResults(data.results);
+      setIsExecuting(false);
+
+      toast.success(`Found ${data.count} ${data.count === 1 ? 'result' : 'results'}`);
+    },
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      setIsExecuting(false);
+      setResults(null);
+
+      toast.error(`Query failed: ${errorMessage}`);
+    },
   });
 }

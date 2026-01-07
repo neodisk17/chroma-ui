@@ -129,7 +129,6 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   const [showDetail, setShowDetail] = useState(false);
 
   // Grid state
-  const [gridReady, setGridReady] = useState(false);
   const [gridApi, setGridApi] = useState<any>(null);
 
   // Fetch documents with pagination
@@ -205,7 +204,6 @@ export const DocumentGrid = React.memo(function DocumentGrid({
 
   // Grid ready callback
   const onGridReady = useCallback((params: GridReadyEvent) => {
-    setGridReady(true);
     setGridApi(params.api);
 
     // Load column state from localStorage

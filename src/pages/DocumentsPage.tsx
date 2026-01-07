@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CollectionList } from '../components/collections/CollectionList';
 import { DocumentGrid } from '../components/documents/DocumentGrid';
-import type { Collection, Document } from '../../shared/schemas';
+import type { Document as ChromaDocument } from '../../shared/schemas';
 
 function DocumentsPage() {
   const [selectedCollection, setSelectedCollection] = useState<string | undefined>();
@@ -15,7 +15,7 @@ function DocumentsPage() {
     console.log('Add document to', selectedCollection);
   };
 
-  const handleEditDocument = (document: Document) => {
+  const handleEditDocument = (document: ChromaDocument) => {
     // TODO: Implement in Phase 6
     console.log('Edit document', document.id);
   };
