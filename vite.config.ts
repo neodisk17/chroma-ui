@@ -15,8 +15,12 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
+            minify: false,
             rollupOptions: {
-              external: ['electron', 'keytar', 'electron-store', 'chromadb']
+              external: ['electron', 'keytar', 'chromadb'],
+              output: {
+                format: 'cjs'
+              }
             }
           }
         }
@@ -30,7 +34,14 @@ export default defineConfig({
         },
         vite: {
           build: {
-            outDir: 'dist-electron'
+            outDir: 'dist-electron',
+            minify: false,
+            rollupOptions: {
+              external: ['electron'],
+              output: {
+                format: 'cjs'
+              }
+            }
           }
         }
       }

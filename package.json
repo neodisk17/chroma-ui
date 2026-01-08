@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "ChromaDB Desktop UI - Electron + React + TypeScript",
   "main": "dist-electron/main.js",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
