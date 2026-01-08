@@ -11,6 +11,15 @@ interface ConnectionPoolEntry {
   isConnecting: boolean;
 }
 
+// ChromaDB client configuration
+interface ChromaClientConfig {
+  path: string;
+  auth?: {
+    provider: 'token' | 'basic';
+    credentials: string;
+  };
+}
+
 // Connection test result
 export interface ConnectionTestResult {
   success: boolean;
@@ -66,7 +75,7 @@ export class ConnectionManager {
       const protocol = config.useSSL ? 'https' : 'http';
       const url = `${protocol}://${config.host}:${config.port}`;
 
-      const clientConfig: any = {
+      const clientConfig: ChromaClientConfig = {
         path: url,
       };
 
@@ -257,7 +266,7 @@ export class ConnectionManager {
     const protocol = profile.useSSL ? 'https' : 'http';
     const url = `${protocol}://${profile.host}:${profile.port}`;
 
-    const clientConfig: any = {
+    const clientConfig: ChromaClientConfig = {
       path: url,
     };
 

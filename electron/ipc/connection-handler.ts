@@ -7,7 +7,6 @@ import {
   CreateConnectionRequestSchema,
   UpdateConnectionRequestSchema,
   TestConnectionRequestSchema,
-  IPCResponseSchema,
 } from '../../shared/schemas';
 import { credentialStore } from '../services/credential-store';
 import { connectionManager } from '../services/connection-manager';

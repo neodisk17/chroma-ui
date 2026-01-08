@@ -15,12 +15,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { reduceTo2D, euclideanDistance, cosineSimilarity, Point2D } from '@/lib/pca';
+import type { Metadata } from '@/types/chromadb.types';
 
 export interface EmbeddingData {
   id: string;
   vector: number[];
   document: string;
-  metadata?: Record<string, any>;
+  metadata?: Metadata;
 }
 
 interface EmbeddingPlotProps {
@@ -32,7 +33,7 @@ interface EmbeddingPlotProps {
 interface PlotPoint extends Point2D {
   id: string;
   document: string;
-  metadata?: Record<string, any>;
+  metadata?: Metadata;
   distance?: number;
   similarity?: number;
 }
@@ -187,10 +188,10 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
   }, [selectedId, hoveredId]);
 
   // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (!active || !payload || payload.length === 0) return null;
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: PlotPoint }> }) => {
+    if (!active || !payload || payload.length === 0 || !payload[0]?.payload) return null;
 
-    const point = payload[0].payload as PlotPoint;
+    const point = payload[0].payload;
     const docPreview = point.document.length > 100
       ? point.document.substring(0, 100) + '...'
       : point.document;
@@ -333,8 +334,8 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
           <ResponsiveContainer width="100%" height={500}>
             <ScatterChart
               margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-              onClick={(e: any) => {
-                if (e && e.activePayload && e.activePayload.length > 0) {
+              onClick={(e) => {
+                if (e && 'activePayload' in e && e.activePayload && Array.isArray(e.activePayload) && e.activePayload.length > 0) {
                   const point = e.activePayload[0].payload as PlotPoint;
                   onPointClick?.(point.id);
                 }
@@ -359,7 +360,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
               <Tooltip content={<CustomTooltip />} />
               <Scatter
                 data={reducedData}
-                onMouseEnter={(data: any) => setHoveredId(data.id)}
+                onMouseEnter={(data: PlotPoint) => setHoveredId(data.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 style={{ cursor: 'pointer' }}
               >

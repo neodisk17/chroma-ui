@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { useQueryStore, type DocumentFilterOperator } from '@/stores/query-store';
 import { Plus, X } from 'lucide-react';
+import type { ChromaDBWhereDocument } from '@/types/chromadb.types';
 
 const DOCUMENT_FILTER_OPERATORS: {
   value: DocumentFilterOperator;
@@ -34,12 +35,12 @@ export function DocumentFilterBuilder() {
     useQueryStore();
 
   // Generate ChromaDB whereDocument clause preview
-  const generateWhereDocumentClause = () => {
+  const generateWhereDocumentClause = (): ChromaDBWhereDocument | null => {
     if (documentFilters.length === 0) {
       return null;
     }
 
-    const whereDocument: any = {};
+    const whereDocument: ChromaDBWhereDocument = {};
     documentFilters.forEach((filter, index) => {
       if (filter.value) {
         whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };

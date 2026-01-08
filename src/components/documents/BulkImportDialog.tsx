@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertCircle, Upload, FileJson, FileSpreadsheet, Loader2, CheckCircle } from 'lucide-react';
 import { useBulkImport } from '@/hooks/use-chromadb';
 import Papa from 'papaparse';
+import type { Metadata } from '@/types/chromadb.types';
 
 interface BulkImportDialogProps {
   open: boolean;
@@ -23,8 +24,15 @@ interface BulkImportDialogProps {
 interface ParsedDocument {
   id?: string;
   document: string;
-  metadata?: Record<string, any>;
+  metadata?: Metadata;
   embedding?: number[];
+}
+
+interface CSVRow {
+  id?: string;
+  document: string;
+  metadata?: string;
+  embedding?: string;
 }
 
 /**
@@ -95,12 +103,12 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
 
   const parseCsvFile = async (file: File) => {
     return new Promise<void>((resolve, reject) => {
-      Papa.parse(file, {
+      Papa.parse<CSVRow>(file, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
           try {
-            const docs: ParsedDocument[] = results.data.map((row: any, index) => {
+            const docs: ParsedDocument[] = results.data.map((row: CSVRow, index) => {
               if (!row.document) {
                 throw new Error(`Row ${index + 1} must have a "document" column`);
               }

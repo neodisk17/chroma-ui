@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateConnectionRequestSchema, CreateConnectionRequest } from '../../../shared/schemas';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -21,7 +22,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
     watch,
     reset,
   } = useForm<CreateConnectionRequest>({
-    resolver: zodResolver(CreateConnectionRequestSchema) as any,
+    resolver: zodResolver(CreateConnectionRequestSchema) as Resolver<CreateConnectionRequest>,
     defaultValues: {
       name: '',
       host: 'localhost',

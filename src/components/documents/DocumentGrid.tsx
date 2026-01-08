@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import type { ColDef, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community';
+import type { ColDef, GridReadyEvent, SelectionChangedEvent, ICellRendererParams, GridApi } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import {
@@ -32,7 +32,7 @@ interface DocumentGridProps {
 }
 
 // Cell renderer for document text (show preview)
-const DocumentCellRenderer = (params: any) => {
+const DocumentCellRenderer = (params: ICellRendererParams<Document>) => {
   const text = params.value || '';
   const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
 
@@ -44,7 +44,7 @@ const DocumentCellRenderer = (params: any) => {
 };
 
 // Cell renderer for metadata (show JSON preview)
-const MetadataCellRenderer = (params: any) => {
+const MetadataCellRenderer = (params: ICellRendererParams<Document>) => {
   const metadata = params.value;
 
   if (!metadata || Object.keys(metadata).length === 0) {
@@ -62,7 +62,13 @@ const MetadataCellRenderer = (params: any) => {
 };
 
 // Cell renderer for actions
-const ActionsCellRenderer = (params: any) => {
+interface ActionsCellRendererParams extends ICellRendererParams<Document> {
+  onView?: (document: Document) => void;
+  onEdit?: (document: Document) => void;
+  onDelete?: (ids: string[]) => void;
+}
+
+const ActionsCellRenderer = (params: ActionsCellRendererParams) => {
   const { onView, onEdit, onDelete } = params;
 
   return (
@@ -71,7 +77,7 @@ const ActionsCellRenderer = (params: any) => {
         variant="ghost"
         size="icon"
         className="h-7 w-7"
-        onClick={() => onView?.(params.data)}
+        onClick={() => onView?.(params.data!)}
         title="View"
       >
         <Eye className="h-3 w-3" />
@@ -80,7 +86,7 @@ const ActionsCellRenderer = (params: any) => {
         variant="ghost"
         size="icon"
         className="h-7 w-7"
-        onClick={() => onEdit?.(params.data)}
+        onClick={() => onEdit?.(params.data!)}
         title="Edit"
       >
         <Edit className="h-3 w-3" />
@@ -89,7 +95,7 @@ const ActionsCellRenderer = (params: any) => {
         variant="ghost"
         size="icon"
         className="h-7 w-7 text-destructive"
-        onClick={() => onDelete?.([params.data.id])}
+        onClick={() => onDelete?.([params.data!.id])}
         title="Delete"
       >
         <Trash2 className="h-3 w-3" />
@@ -120,7 +126,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   const [pageSize, setPageSize] = useState(100);
 
   // Selection state
-  const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Document[]>([]);
 
   // Detail panel state
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -135,7 +141,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Grid state
-  const [gridApi, setGridApi] = useState<any>(null);
+  const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
   // Fetch documents with pagination
   const { data, isLoading, error, refetch } = useDocuments(collectionName, {
@@ -279,7 +285,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     const headers = ['ID', 'Document', 'Metadata'];
 
     // CSV rows
-    const rows = dataToExport.map((row: any) => [
+    const rows = dataToExport.map((row) => [
       row.id,
       `"${(row.document || '').replace(/"/g, '""')}"`, // Escape quotes
       `"${JSON.stringify(row.metadata || {}).replace(/"/g, '""')}"`,
@@ -306,7 +312,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   // Delete selected
   const handleDeleteSelected = useCallback(() => {
     if (selectedRows.length > 0) {
-      const ids = selectedRows.map((row: any) => row.id);
+      const ids = selectedRows.map((row: Document) => row.id);
       handleDelete(ids);
       handleClearSelection();
     }

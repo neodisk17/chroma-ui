@@ -13,6 +13,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { DocumentEditor, DocumentFormData, validateDocumentForm } from './DocumentEditor';
 import { useAddDocument, useUpdateDocument } from '@/hooks/use-chromadb';
 import type { Document } from '../../../shared/schemas';
+import type { Metadata } from '@/types/chromadb.types';
 
 interface AddEditDocumentDialogProps {
   open: boolean;
@@ -67,7 +68,7 @@ export function AddEditDocumentDialog({
 
     try {
       // Parse metadata and embedding
-      let metadata: Record<string, any> | undefined;
+      let metadata: Metadata | undefined;
       let embedding: number[] | undefined;
 
       if (formData.metadata.trim()) {

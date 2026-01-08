@@ -192,6 +192,7 @@ export function hasMinimumContrast(_foreground: string, _background: string): bo
 /**
  * Debounce function for search inputs (accessibility improvement)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number

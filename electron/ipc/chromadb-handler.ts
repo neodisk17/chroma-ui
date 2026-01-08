@@ -19,6 +19,24 @@ import {
 } from '../../shared/schemas';
 import { connectionManager } from '../services/connection-manager';
 import { v4 as uuidv4 } from 'uuid';
+import type { Metadata } from '../../src/types/chromadb.types';
+
+// ChromaDB result types
+type IncludeOption = 'documents' | 'metadatas' | 'embeddings';
+
+interface ChromaDBGetResult {
+  ids: string[];
+  documents?: (string | null)[];
+  metadatas?: (Metadata | null)[];
+  embeddings?: (number[] | null)[];
+}
+
+interface ChromaDBQueryResult {
+  ids: string[][];
+  documents?: (string | null)[][];
+  metadatas?: (Metadata | null)[][];
+  distances?: (number | undefined)[][];
+}
 
 /**
  * Register all ChromaDB collection-related IPC handlers
@@ -129,9 +147,10 @@ export function registerChromaDBHandlers(): void {
       // Check if it's a "not found" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist')) {
+        const name = typeof requestData === 'object' && requestData !== null && 'name' in requestData ? (requestData as { name: unknown }).name : 'unknown';
         return {
           success: false,
-          error: `The collection '${(requestData as any).name}' does not exist`,
+          error: `The collection '${name}' does not exist`,
         };
       }
 
@@ -195,9 +214,10 @@ export function registerChromaDBHandlers(): void {
       // Check for duplicate name error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('duplicate')) {
+        const name = typeof requestData === 'object' && requestData !== null && 'name' in requestData ? (requestData as { name: unknown }).name : 'unknown';
         return {
           success: false,
-          error: `Collection with name '${(requestData as any).name}' already exists`,
+          error: `Collection with name '${name}' already exists`,
         };
       }
 
@@ -261,9 +281,10 @@ export function registerChromaDBHandlers(): void {
       // Check if it's a "not found" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist')) {
+        const name = typeof requestData === 'object' && requestData !== null && 'name' in requestData ? (requestData as { name: unknown }).name : 'unknown';
         return {
           success: false,
-          error: `The collection '${(requestData as any).name}' does not exist`,
+          error: `The collection '${name}' does not exist`,
         };
       }
 
@@ -304,9 +325,10 @@ export function registerChromaDBHandlers(): void {
       // Check if it's a "not found" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist')) {
+        const name = typeof requestData === 'object' && requestData !== null && 'name' in requestData ? (requestData as { name: unknown }).name : 'unknown';
         return {
           success: false,
-          error: `The collection '${(requestData as any).name}' does not exist`,
+          error: `The collection '${name}' does not exist`,
         };
       }
 
@@ -352,7 +374,7 @@ export function registerChromaDBHandlers(): void {
       const results = await collection.get({
         limit: request.limit,
         offset: request.offset,
-        include: ['documents', 'metadatas', 'embeddings'] as any,
+        include: ['documents', 'metadatas', 'embeddings'] as IncludeOption[],
       });
 
       const response: QueryDocumentsResponse = {
@@ -373,9 +395,10 @@ export function registerChromaDBHandlers(): void {
       // Check if it's a "not found" error
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist')) {
+        const collectionName = typeof requestData === 'object' && requestData !== null && 'collectionName' in requestData ? (requestData as { collectionName: unknown }).collectionName : 'unknown';
         return {
           success: false,
-          error: `The collection '${(requestData as any).collectionName}' does not exist`,
+          error: `The collection '${collectionName}' does not exist`,
         };
       }
 
@@ -416,7 +439,7 @@ export function registerChromaDBHandlers(): void {
       // Get document by ID
       const results = await collection.get({
         ids: [request.documentId],
-        include: ['documents', 'metadatas', 'embeddings'] as any,
+        include: ['documents', 'metadatas', 'embeddings'] as IncludeOption[],
       });
 
       // Check if document was found
@@ -484,7 +507,7 @@ export function registerChromaDBHandlers(): void {
       }
 
       // Build query based on type
-      let results: any;
+      let results: ChromaDBQueryResult | ChromaDBGetResult;
 
       if (request.queryType === 'similarity' || request.queryType === 'combined') {
         // Similarity search with optional filters
@@ -496,20 +519,24 @@ export function registerChromaDBHandlers(): void {
         }
 
         // Build where clause from metadata filters
-        let where: any = undefined;
+        let where: Record<string, Record<string, string | number | (string | number)[]>> | undefined = undefined;
         if (request.metadataFilters && request.metadataFilters.length > 0) {
           where = {};
           request.metadataFilters.forEach((filter) => {
-            where[filter.field] = { [filter.operator]: filter.value };
+            if (where) {
+              where[filter.field] = { [filter.operator]: filter.value };
+            }
           });
         }
 
         // Build whereDocument clause from document filters
-        let whereDocument: any = undefined;
+        let whereDocument: Record<string, Record<string, string>> | undefined = undefined;
         if (request.documentFilters && request.documentFilters.length > 0) {
           whereDocument = {};
           request.documentFilters.forEach((filter, index) => {
-            whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
+            if (whereDocument) {
+              whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
+            }
           });
         }
 
@@ -533,19 +560,23 @@ export function registerChromaDBHandlers(): void {
         }
       } else if (request.queryType === 'filter') {
         // Filter-only query (no similarity search)
-        let where: any = undefined;
+        let where: Record<string, Record<string, string | number | (string | number)[]>> | undefined = undefined;
         if (request.metadataFilters && request.metadataFilters.length > 0) {
           where = {};
           request.metadataFilters.forEach((filter) => {
-            where[filter.field] = { [filter.operator]: filter.value };
+            if (where) {
+              where[filter.field] = { [filter.operator]: filter.value };
+            }
           });
         }
 
-        let whereDocument: any = undefined;
+        let whereDocument: Record<string, Record<string, string>> | undefined = undefined;
         if (request.documentFilters && request.documentFilters.length > 0) {
           whereDocument = {};
           request.documentFilters.forEach((filter, index) => {
-            whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
+            if (whereDocument) {
+              whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
+            }
           });
         }
 
@@ -595,9 +626,10 @@ export function registerChromaDBHandlers(): void {
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist')) {
+        const collectionName = typeof requestData === 'object' && requestData !== null && 'collectionName' in requestData ? (requestData as { collectionName: unknown }).collectionName : 'unknown';
         return {
           success: false,
-          error: `The collection '${(requestData as any).collectionName}' does not exist`,
+          error: `The collection '${collectionName}' does not exist`,
         };
       }
 
@@ -773,7 +805,7 @@ export function registerChromaDBHandlers(): void {
 
       const ids: string[] = [];
       const documents: string[] = [];
-      const metadatas: any[] = [];
+      const metadatas: Metadata[] = [];
       const embeddings: number[][] = [];
       const errors: string[] = [];
       let importedCount = 0;

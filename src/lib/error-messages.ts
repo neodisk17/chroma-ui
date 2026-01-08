@@ -228,7 +228,7 @@ export function validateDocumentId(id: string): {
 export function validateJSON(jsonString: string): {
   valid: boolean;
   error?: string;
-  parsed?: any;
+  parsed?: unknown;
 } {
   if (!jsonString || jsonString.trim().length === 0) {
     return { valid: true }; // Empty is valid (optional)

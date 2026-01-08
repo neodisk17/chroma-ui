@@ -12,6 +12,7 @@ import {
 import { useQueryStore, type FilterOperator } from '@/stores/query-store';
 import { Plus, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import type { ChromaDBWhereClause } from '@/types/chromadb.types';
 
 const FILTER_OPERATORS: { value: FilterOperator; label: string; description: string }[] = [
   { value: '$eq', label: 'Equals (=)', description: 'Field equals value' },
@@ -28,7 +29,7 @@ export function FilterBuilder() {
   const { metadataFilters, addMetadataFilter, updateMetadataFilter, removeMetadataFilter } =
     useQueryStore();
 
-  const getValueInput = (filterId: string, operator: FilterOperator, value: any) => {
+  const getValueInput = (filterId: string, operator: FilterOperator, value: string | number | (string | number)[]) => {
     // For $in and $nin operators, use textarea for JSON array
     if (operator === '$in' || operator === '$nin') {
       const stringValue = Array.isArray(value)
@@ -81,12 +82,12 @@ export function FilterBuilder() {
   };
 
   // Generate ChromaDB where clause preview
-  const generateWhereClause = () => {
+  const generateWhereClause = (): ChromaDBWhereClause | null => {
     if (metadataFilters.length === 0) {
       return null;
     }
 
-    const where: any = {};
+    const where: ChromaDBWhereClause = {};
     metadataFilters.forEach((filter) => {
       if (filter.field && (filter.value || filter.value === 0)) {
         where[filter.field] = { [filter.operator]: filter.value };

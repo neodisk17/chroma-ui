@@ -11,6 +11,7 @@ import { DocumentFilterBuilder } from './DocumentFilterBuilder';
 import { QueryResults } from './QueryResults';
 import { QueryTemplates } from './QueryTemplates';
 import { useExecuteQuery } from '@/hooks/use-chromadb';
+import type { ChromaDBQueryObject, ChromaDBWhereClause, ChromaDBWhereDocument } from '@/types/chromadb.types';
 
 interface QueryBuilderProps {
   collectionName?: string;
@@ -31,8 +32,8 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
   const executeQuery = useExecuteQuery();
 
   // Generate query preview JSON
-  const generateQueryPreview = () => {
-    const query: any = {
+  const generateQueryPreview = (): ChromaDBQueryObject => {
+    const query: ChromaDBQueryObject = {
       nResults,
     };
 
@@ -41,7 +42,7 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     }
 
     if (metadataFilters.length > 0) {
-      const where: any = {};
+      const where: ChromaDBWhereClause = {};
       metadataFilters.forEach((filter) => {
         if (filter.field && filter.value) {
           where[filter.field] = { [filter.operator]: filter.value };
@@ -53,7 +54,7 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     }
 
     if (documentFilters.length > 0) {
-      const whereDocument: any = {};
+      const whereDocument: ChromaDBWhereDocument = {};
       documentFilters.forEach((filter, index) => {
         if (filter.value) {
           whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };

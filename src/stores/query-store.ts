@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { Metadata } from '../types/chromadb.types';
 
 // ============================================================================
 // Filter Condition Types
@@ -25,7 +26,7 @@ export interface DocumentFilterCondition {
 export interface QueryResult {
   id: string;
   document: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Metadata | null;
   distance?: number;
 }
 
