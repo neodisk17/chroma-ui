@@ -38,6 +38,7 @@ interface ChromaDBQueryResult {
   distances?: (number | undefined)[][];
 }
 
+
 /**
  * Register all ChromaDB collection-related IPC handlers
  *
@@ -53,7 +54,6 @@ export function registerChromaDBHandlers(): void {
   ipcMain.handle('collection:list', async () => {
     try {
       const client = connectionManager.getActiveClient();
-
       if (!client) {
         return {
           success: false,
@@ -118,7 +118,9 @@ export function registerChromaDBHandlers(): void {
       }
 
       // Get collection from ChromaDB
-      const collection = await client.getCollection({ name: request.name });
+      const collection = await client.getCollection({
+        name: request.name,
+      });
 
       if (!collection) {
         return {
@@ -180,7 +182,9 @@ export function registerChromaDBHandlers(): void {
 
       // Check if collection already exists
       try {
-        const existing = await client.getCollection({ name: request.name });
+        const existing = await client.getCollection({
+          name: request.name,
+        });
         if (existing) {
           return {
             success: false,
@@ -191,10 +195,26 @@ export function registerChromaDBHandlers(): void {
         // Collection doesn't exist, which is what we want
       }
 
+      // Prepare metadata with distance function
+      const metadata = request.metadata || {};
+
+      // Add distance function to metadata if specified
+      if (request.distanceFunction) {
+        metadata['hnsw:space'] = request.distanceFunction;
+      }
+
+      // Store the user's embedding function preference in metadata for reference
+      if (request.embeddingFunction && request.embeddingFunction !== 'default') {
+        metadata['embedding_function'] = request.embeddingFunction;
+      }
+
       // Create collection
       const collection = await client.createCollection({
         name: request.name,
-        metadata: request.metadata || {},
+        metadata: {
+          ...metadata,
+          created_at: new Date().toISOString(),
+        },
       });
 
       const formattedCollection: Collection = {
@@ -246,7 +266,9 @@ export function registerChromaDBHandlers(): void {
       }
 
       // Get collection
-      const collection = await client.getCollection({ name: request.name });
+      const collection = await client.getCollection({
+        name: request.name,
+      });
 
       if (!collection) {
         return {
@@ -261,7 +283,9 @@ export function registerChromaDBHandlers(): void {
       });
 
       // Get updated collection
-      const updated = await client.getCollection({ name: request.name });
+      const updated = await client.getCollection({
+        name: request.name,
+      });
       const count = await updated.count();
 
       const formattedCollection: Collection = {
@@ -357,7 +381,9 @@ export function registerChromaDBHandlers(): void {
       }
 
       // Get collection
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {
@@ -427,7 +453,9 @@ export function registerChromaDBHandlers(): void {
       }
 
       // Get collection
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {
@@ -497,7 +525,9 @@ export function registerChromaDBHandlers(): void {
       }
 
       // Get collection
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {
@@ -656,7 +686,9 @@ export function registerChromaDBHandlers(): void {
         };
       }
 
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {
@@ -705,7 +737,9 @@ export function registerChromaDBHandlers(): void {
         };
       }
 
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {
@@ -751,7 +785,9 @@ export function registerChromaDBHandlers(): void {
         };
       }
 
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {
@@ -794,7 +830,9 @@ export function registerChromaDBHandlers(): void {
         };
       }
 
-      const collection = await client.getCollection({ name: request.collectionName });
+      const collection = await client.getCollection({
+        name: request.collectionName,
+      });
 
       if (!collection) {
         return {

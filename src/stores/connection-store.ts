@@ -12,7 +12,8 @@ import { IPC_CHANNELS } from '../../shared/constants';
 interface ConnectionState {
   // State
   connections: ConnectionProfile[];
-  activeConnectionId: string | null;
+  activeConnectionId: string | null; // Only set when actually connected
+  lastActiveConnectionId: string | null; // Persisted for auto-reconnect
   isLoading: boolean;
   isConnecting: boolean;
   error: string | null;
@@ -46,7 +47,8 @@ export const useConnectionStore = create<ConnectionState>()(
     (set) => ({
       // Initial state
       connections: [],
-      activeConnectionId: null,
+      activeConnectionId: null, // Always starts null, only set after successful connection
+      lastActiveConnectionId: null, // Persisted for auto-reconnect
       isLoading: false,
       isConnecting: false,
       error: null,
@@ -156,6 +158,8 @@ export const useConnectionStore = create<ConnectionState>()(
               connections: state.connections.filter((c) => c.id !== connectionId),
               activeConnectionId:
                 state.activeConnectionId === connectionId ? null : state.activeConnectionId,
+              lastActiveConnectionId:
+                state.lastActiveConnectionId === connectionId ? null : state.lastActiveConnectionId,
               isLoading: false,
             }));
             return true;
@@ -217,7 +221,12 @@ export const useConnectionStore = create<ConnectionState>()(
           );
 
           if (response.success) {
-            set({ activeConnectionId: connectionId, isConnecting: false });
+            // Set both activeConnectionId (runtime) and lastActiveConnectionId (persisted)
+            set({
+              activeConnectionId: connectionId,
+              lastActiveConnectionId: connectionId,
+              isConnecting: false,
+            });
             return true;
           } else {
             set({
@@ -248,6 +257,8 @@ export const useConnectionStore = create<ConnectionState>()(
             set((state) => ({
               activeConnectionId:
                 state.activeConnectionId === connectionId ? null : state.activeConnectionId,
+              lastActiveConnectionId:
+                state.lastActiveConnectionId === connectionId ? null : state.lastActiveConnectionId,
               isConnecting: false,
             }));
             return true;
@@ -279,8 +290,9 @@ export const useConnectionStore = create<ConnectionState>()(
     }),
     {
       name: 'connection-storage',
-      // Only persist the active connection ID
-      partialize: (state) => ({ activeConnectionId: state.activeConnectionId }),
+      // Only persist lastActiveConnectionId for auto-reconnect on app restart
+      // activeConnectionId is NOT persisted - it's only set after successful connection
+      partialize: (state) => ({ lastActiveConnectionId: state.lastActiveConnectionId }),
     }
   )
 );

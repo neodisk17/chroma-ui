@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { useConnectionStore } from '../../stores/connection-store';
 
 interface ConnectionListProps {
@@ -9,18 +10,67 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
   const {
     connections,
     activeConnectionId,
+    lastActiveConnectionId,
     loadConnections,
     connectToConnection,
     deleteConnection,
     isLoading,
     isConnecting,
+    error,
+    clearError,
   } = useConnectionStore();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const hasAttemptedReconnect = useRef(false);
+  const isAutoReconnecting = useRef(false);
 
+  // Load connections on mount
   useEffect(() => {
     loadConnections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-reconnect to previously active connection after app restart
+  useEffect(() => {
+    const attemptReconnect = async () => {
+      // Only attempt once, after connections are loaded
+      // Use lastActiveConnectionId (persisted) for auto-reconnect, not activeConnectionId
+      if (
+        hasAttemptedReconnect.current ||
+        isLoading ||
+        connections.length === 0 ||
+        !lastActiveConnectionId
+      ) {
+        return;
+      }
+
+      hasAttemptedReconnect.current = true;
+
+      // Check if the persisted connection still exists
+      const connectionExists = connections.some((c) => c.id === lastActiveConnectionId);
+      if (connectionExists) {
+        console.log('Auto-reconnecting to previously active connection:', lastActiveConnectionId);
+        isAutoReconnecting.current = true;
+        await connectToConnection(lastActiveConnectionId);
+        isAutoReconnecting.current = false;
+      }
+    };
+
+    attemptReconnect();
+  }, [connections, lastActiveConnectionId, isLoading, connectToConnection]);
+
+  // Display error toast when connection fails (but not during auto-reconnect)
+  useEffect(() => {
+    if (error && !isAutoReconnecting.current) {
+      toast.error('Connection Failed', {
+        description: error,
+        duration: 5000,
+      });
+    }
+    if (error) {
+      clearError();
+    }
+  }, [error, clearError]);
 
   const handleConnect = async (connectionId: string) => {
     await connectToConnection(connectionId);

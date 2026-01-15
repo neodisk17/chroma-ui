@@ -152,7 +152,10 @@ export class ConnectionManager {
     } catch (error) {
       // Remove from pool on failure
       this.connectionPool.delete(profile.id);
-      throw error;
+
+      // Format error message for user
+      const formattedError = this.formatConnectionError(error, profile.host, profile.port);
+      throw new Error(formattedError.message);
     }
   }
 
