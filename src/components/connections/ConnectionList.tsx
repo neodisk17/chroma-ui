@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useConnectionStore } from '../../stores/connection-store';
 
@@ -7,6 +8,7 @@ interface ConnectionListProps {
 }
 
 export function ConnectionList({ onNewConnection }: ConnectionListProps) {
+  const navigate = useNavigate();
   const {
     connections,
     activeConnectionId,
@@ -51,13 +53,16 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
       if (connectionExists) {
         console.log('Auto-reconnecting to previously active connection:', lastActiveConnectionId);
         isAutoReconnecting.current = true;
-        await connectToConnection(lastActiveConnectionId);
+        const success = await connectToConnection(lastActiveConnectionId);
         isAutoReconnecting.current = false;
+        if (success) {
+          navigate('/collections');
+        }
       }
     };
 
     attemptReconnect();
-  }, [connections, lastActiveConnectionId, isLoading, connectToConnection]);
+  }, [connections, lastActiveConnectionId, isLoading, connectToConnection, navigate]);
 
   // Display error toast when connection fails (but not during auto-reconnect)
   useEffect(() => {
@@ -73,7 +78,10 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
   }, [error, clearError]);
 
   const handleConnect = async (connectionId: string) => {
-    await connectToConnection(connectionId);
+    const success = await connectToConnection(connectionId);
+    if (success) {
+      navigate('/collections');
+    }
   };
 
   const handleDelete = async (connectionId: string) => {
