@@ -48,14 +48,14 @@ export function registerDocumentHandlers(): void {
       const results = await collection.get({
         limit: request.limit,
         offset: request.offset,
-        include: ['documents', 'metadatas', 'embeddings'] as IncludeOption[],
+        include: ['documents', 'metadatas'] as IncludeOption[],
       });
 
       return successResponse({
         ids: results.ids || [],
         documents: results.documents || [],
         metadatas: results.metadatas || [],
-        embeddings: results.embeddings || null,
+        embeddings: null, // Embeddings excluded from list query for performance
         total,
       });
     } catch (error) {

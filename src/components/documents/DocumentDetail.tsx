@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Skeleton } from '../ui/skeleton';
 import { EmbeddingViewer } from './EmbeddingViewer';
+import { useDocument } from '../../hooks/use-chromadb';
 import type { Document } from '../../../shared/schemas';
 
 interface DocumentDetailProps {
   document: Document | null;
+  collectionName?: string;
   isLoading?: boolean;
   onClose: () => void;
   onEdit?: (document: Document) => void;
@@ -29,6 +31,7 @@ interface DocumentDetailProps {
  */
 export function DocumentDetail({
   document,
+  collectionName,
   isLoading = false,
   onClose,
   onEdit,
@@ -37,6 +40,12 @@ export function DocumentDetail({
   const [copiedId, setCopiedId] = useState(false);
   const [copiedDocument, setCopiedDocument] = useState(false);
   const [copiedMetadata, setCopiedMetadata] = useState(false);
+
+  // Lazy load the full document (with embedding) when the detail panel opens
+  const { data: fullDocument, isLoading: isLoadingFullDoc } = useDocument(
+    collectionName,
+    document?.id
+  );
 
   const copyToClipboard = async (
     text: string,
@@ -192,8 +201,23 @@ export function DocumentDetail({
               </CardContent>
             </Card>
 
-            {/* Embedding */}
-            <EmbeddingViewer embedding={document.embedding} />
+            {/* Embedding - lazy loaded */}
+            {isLoadingFullDoc ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Embedding</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <EmbeddingViewer embedding={fullDocument?.embedding ?? document.embedding} />
+            )}
           </div>
         </ScrollArea>
 

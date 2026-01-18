@@ -1,8 +1,12 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, GridReadyEvent, SelectionChangedEvent, ICellRendererParams, GridApi } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+// Register AG Grid modules
+ModuleRegistry.registerModules([AllCommunityModule]);
 import {
   Eye,
   Edit,
@@ -123,7 +127,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
 }: DocumentGridProps) {
   // Pagination state
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(20);
 
   // Selection state
   const [selectedRows, setSelectedRows] = useState<Document[]>([]);
@@ -222,7 +226,6 @@ export const DocumentGrid = React.memo(function DocumentGrid({
       id,
       document: data.documents[index],
       metadata: data.metadatas[index],
-      embedding: data.embeddings?.[index],
     }));
   }, [data]);
 
@@ -364,6 +367,8 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     );
   }
 
+  // console.log("Data is ", data, rowData)
+
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
@@ -460,6 +465,8 @@ export const DocumentGrid = React.memo(function DocumentGrid({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
               <SelectItem value="500">500</SelectItem>
               <SelectItem value="1000">1000</SelectItem>
@@ -515,6 +522,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
       {showDetail && selectedDocument && (
         <DocumentDetail
           document={selectedDocument}
+          collectionName={collectionName}
           onClose={() => {
             setShowDetail(false);
             setSelectedDocument(null);
