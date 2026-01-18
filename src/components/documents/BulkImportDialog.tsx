@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, Upload, FileJson, FileSpreadsheet, Loader2, CheckCircle } from 'lucide-react';
+import { AlertCircle, Upload, FileJson, FileSpreadsheet, Loader2, CheckCircle, Download } from 'lucide-react';
 import { useBulkImport } from '@/hooks/use-chromadb';
 import Papa from 'papaparse';
 import type { Metadata } from '@/types/chromadb.types';
@@ -203,7 +203,7 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
 
         <div className="space-y-4 py-4">
           {/* File Upload Area */}
-          {!file && (
+          {(!file || parseError) && (
             <div
               className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -311,6 +311,25 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
 ]`}
               </pre>
               <p><strong>CSV format:</strong> Columns: id, document, metadata (JSON), embedding (JSON array)</p>
+              <div className="flex items-center gap-3 pt-2 border-t mt-2">
+                <span className="text-muted-foreground">Download sample:</span>
+                <a
+                  href="/sample-documents.json"
+                  download="sample-documents.json"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <Download className="h-3 w-3" />
+                  JSON
+                </a>
+                <a
+                  href="/sample-documents.csv"
+                  download="sample-documents.csv"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <Download className="h-3 w-3" />
+                  CSV
+                </a>
+              </div>
             </AlertDescription>
           </Alert>
         </div>

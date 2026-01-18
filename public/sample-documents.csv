@@ -1,0 +1,4 @@
+id,document,metadata
+doc1,"ChromaDB is an open-source embedding database designed for AI applications.","{""source"": ""documentation"", ""category"": ""database""}"
+doc2,"Vector databases store data as high-dimensional vectors for similarity search.","{""source"": ""tutorial"", ""category"": ""concepts""}"
+doc3,"Embeddings are numerical representations of text that capture semantic meaning.","{""source"": ""guide"", ""category"": ""embeddings""}"
