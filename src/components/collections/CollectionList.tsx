@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Search, RefreshCw, Plus, FolderOpen, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, RefreshCw, Plus, FolderOpen, MoreVertical, Edit, Trash2, Info } from 'lucide-react';
 import { useCollections, useDeleteCollection } from '../../hooks/use-chromadb';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -25,17 +26,19 @@ import type { Collection } from '../../../shared/schemas';
 
 interface CollectionListProps {
   selectedCollection?: string;
-  onSelectCollection: (collectionName: string) => void;
+  onSelectCollection?: (collectionName: string) => void;
   onCreateCollection: () => void;
   onEditCollection: (collection: Collection) => void;
+  onViewMetadata?: (collection: Collection) => void;
 }
 
 export function CollectionList({
   selectedCollection,
-  onSelectCollection,
   onCreateCollection,
   onEditCollection,
+  onViewMetadata,
 }: CollectionListProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
@@ -75,6 +78,17 @@ export function CollectionList({
   const handleEditClick = (collection: Collection, e: React.MouseEvent) => {
     e.stopPropagation();
     onEditCollection(collection);
+  };
+
+  // Handle view metadata click
+  const handleViewMetadataClick = (collection: Collection, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onViewMetadata?.(collection);
+  };
+
+  // Handle collection click - navigate to documents page
+  const handleCollectionClick = (collection: Collection) => {
+    navigate(`/collections/${collection.name}/documents`);
   };
 
   return (
@@ -170,7 +184,7 @@ export function CollectionList({
                   className={`group relative flex cursor-pointer items-center justify-between rounded-md p-3 transition-colors hover:bg-accent ${
                     selectedCollection === collection.name ? 'bg-accent' : ''
                   }`}
-                  onClick={() => onSelectCollection(collection.name)}
+                  onClick={() => handleCollectionClick(collection)}
                 >
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center gap-2">
@@ -194,6 +208,10 @@ export function CollectionList({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => handleViewMetadataClick(collection, e)}>
+                        <Info className="mr-2 h-4 w-4" />
+                        View Metadata
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => handleEditClick(collection, e)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit

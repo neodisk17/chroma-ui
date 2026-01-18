@@ -32,8 +32,9 @@ function App() {
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<HomePage />} />
-              <Route path="collections" element={<CollectionsPage />} />
-              <Route path="collections/:collectionId/documents" element={<DocumentsPage />} />
+              <Route path="collections" element={<CollectionsPage />}>
+                <Route path=":collectionId/documents" element={<DocumentsPage />} />
+              </Route>
               <Route path="query" element={<QueryPage />} />
             </Route>
           </Routes>
