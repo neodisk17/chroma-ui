@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, Outlet } from 'react-router-dom';
 import { Database } from 'lucide-react';
 import { CollectionList } from '../components/collections/CollectionList';
-import { CollectionDetail } from '../components/collections/CollectionDetail';
+import { CollectionDetailPanel } from '../components/collections/CollectionDetailPanel';
 import { CollectionDialog } from '../components/collections/CollectionDialog';
 import { AddEditDocumentDialog } from '../components/documents/AddEditDocumentDialog';
 import { Button } from '../components/ui/button';
@@ -13,13 +13,16 @@ function CollectionsPage() {
   const navigate = useNavigate();
   const { collectionId } = useParams<{ collectionId: string }>();
   const { activeConnectionId } = useConnectionStore();
-  const [selectedCollection, setSelectedCollection] = useState<string | undefined>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [collectionToEdit, setCollectionToEdit] = useState<Collection | undefined>();
   const [addDocumentDialogOpen, setAddDocumentDialogOpen] = useState(false);
 
-  // Determine which collection to highlight - from URL params or view metadata selection
-  const highlightedCollection = collectionId || selectedCollection;
+  // Metadata panel state
+  const [showMetadataPanel, setShowMetadataPanel] = useState(false);
+  const [metadataPanelCollection, setMetadataPanelCollection] = useState<string | undefined>();
+
+  // Determine which collection to highlight - from URL params
+  const highlightedCollection = collectionId;
 
   // Show empty state if no connection is active
   if (!activeConnectionId) {
@@ -48,7 +51,13 @@ function CollectionsPage() {
   };
 
   const handleViewMetadata = (collection: Collection) => {
-    setSelectedCollection(collection.name);
+    setMetadataPanelCollection(collection.name);
+    setShowMetadataPanel(true);
+  };
+
+  const handleCloseMetadataPanel = () => {
+    setShowMetadataPanel(false);
+    setMetadataPanelCollection(undefined);
   };
 
   return (
@@ -63,26 +72,11 @@ function CollectionsPage() {
         />
       </div>
 
-      {/* Main Content: Outlet for nested routes or Collection Detail */}
+      {/* Main Content: Outlet for nested routes */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {collectionId ? (
           // Nested route - render DocumentsPage via Outlet
           <Outlet />
-        ) : selectedCollection ? (
-          // View Metadata clicked - show CollectionDetail
-          <CollectionDetail
-            collectionName={selectedCollection}
-            onAddDocument={() => setAddDocumentDialogOpen(true)}
-            onQuery={() => {
-              // TODO: Implement in Phase 5
-              console.log('Query');
-            }}
-            onEdit={(collection) => handleEditCollection(collection)}
-            onDelete={(collection) => {
-              // TODO: Implement delete confirmation
-              console.log('Delete', collection.name);
-            }}
-          />
         ) : (
           // No selection - show empty state
           <div className="flex h-full items-center justify-center">
@@ -106,11 +100,28 @@ function CollectionsPage() {
       />
 
       {/* Add Document Dialog */}
-      {selectedCollection && (
+      {metadataPanelCollection && (
         <AddEditDocumentDialog
           open={addDocumentDialogOpen}
           onClose={() => setAddDocumentDialogOpen(false)}
-          collectionName={selectedCollection}
+          collectionName={metadataPanelCollection}
+        />
+      )}
+
+      {/* Collection Metadata Panel (sliding from right) */}
+      {metadataPanelCollection && (
+        <CollectionDetailPanel
+          collectionName={metadataPanelCollection}
+          open={showMetadataPanel}
+          onClose={handleCloseMetadataPanel}
+          onEdit={(collection) => {
+            handleCloseMetadataPanel();
+            handleEditCollection(collection);
+          }}
+          onDelete={(collection) => {
+            // TODO: Implement delete confirmation
+            console.log('Delete', collection.name);
+          }}
         />
       )}
     </div>
