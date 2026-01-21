@@ -40,8 +40,8 @@ declare global {
 const QUERY_KEYS = {
   collections: () => ['collections'] as const,
   collection: (name: string) => ['collection', name] as const,
-  documents: (collectionName: string, limit: number, offset: number) =>
-    ['documents', collectionName, limit, offset] as const,
+  documents: (collectionName: string, limit: number, offset: number, includeEmbeddings: boolean) =>
+    ['documents', collectionName, limit, offset, includeEmbeddings] as const,
   document: (collectionName: string, documentId: string) =>
     ['document', collectionName, documentId] as const,
 };
@@ -321,17 +321,18 @@ export function useDeleteCollection() {
 /**
  * Hook to query documents from a collection (paginated)
  * @param collectionName - Collection name
- * @param options - Query options (limit, offset)
+ * @param options - Query options (limit, offset, includeEmbeddings)
  */
 export function useDocuments(
   collectionName: string | undefined,
-  options: { limit?: number; offset?: number } = {}
+  options: { limit?: number; offset?: number; includeEmbeddings?: boolean } = {}
 ) {
   const limit = options.limit || 100;
   const offset = options.offset || 0;
+  const includeEmbeddings = options.includeEmbeddings || false;
 
   return useQuery({
-    queryKey: QUERY_KEYS.documents(collectionName || '', limit, offset),
+    queryKey: QUERY_KEYS.documents(collectionName || '', limit, offset, includeEmbeddings),
     queryFn: async (): Promise<QueryDocumentsResponse> => {
       if (!collectionName) {
         return {
@@ -345,7 +346,7 @@ export function useDocuments(
 
       const response = await window.electronAPI.invoke<QueryDocumentsResponse>(
         IPC_CHANNELS.DOCUMENT_QUERY,
-        { collectionName, limit, offset }
+        { collectionName, limit, offset, includeEmbeddings }
       );
 
       if (!response.success) {

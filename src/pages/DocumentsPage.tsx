@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Search } from 'lucide-react';
+import { FileText, Search, ScatterChart } from 'lucide-react';
 import { DocumentGrid } from '../components/documents/DocumentGrid';
 import { QueryBuilder } from '@/components/query/QueryBuilder';
+import { EmbeddingsVisualization } from '@/components/documents/EmbeddingsVisualization';
 
 function DocumentsPage() {
   const { collectionId } = useParams<{ collectionId: string }>();
@@ -34,6 +35,10 @@ function DocumentsPage() {
               <Search className="h-4 w-4" />
               Query Builder
             </TabsTrigger>
+            <TabsTrigger value="embeddings" className="gap-2">
+              <ScatterChart className="h-4 w-4" />
+              Embeddings
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -43,6 +48,10 @@ function DocumentsPage() {
 
         <TabsContent value="query" className="flex-1 mt-0 overflow-hidden">
           <QueryBuilder collectionName={collectionId} />
+        </TabsContent>
+
+        <TabsContent value="embeddings" className="flex-1 mt-0 overflow-auto">
+          <EmbeddingsVisualization collectionName={collectionId} />
         </TabsContent>
       </Tabs>
     </div>

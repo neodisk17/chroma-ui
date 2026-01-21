@@ -187,6 +187,7 @@ export const QueryDocumentsRequestSchema = z.object({
   collectionName: z.string().min(1),
   limit: z.number().int().min(1).max(10000).default(100),
   offset: z.number().int().min(0).default(0),
+  includeEmbeddings: z.boolean().optional().default(false),
 });
 
 export type QueryDocumentsRequest = z.infer<typeof QueryDocumentsRequestSchema>;

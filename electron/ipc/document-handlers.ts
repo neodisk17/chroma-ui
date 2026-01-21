@@ -45,17 +45,22 @@ export function registerDocumentHandlers(): void {
       if (collectionError) return collectionError;
 
       const total = await collection.count();
+      const include: IncludeOption[] = ['documents', 'metadatas'];
+      if (request.includeEmbeddings) {
+        include.push('embeddings');
+      }
+
       const results = await collection.get({
         limit: request.limit,
         offset: request.offset,
-        include: ['documents', 'metadatas'] as IncludeOption[],
+        include,
       });
 
       return successResponse({
         ids: results.ids || [],
         documents: results.documents || [],
         metadatas: results.metadatas || [],
-        embeddings: null, // Embeddings excluded from list query for performance
+        embeddings: request.includeEmbeddings ? (results.embeddings || []) : null,
         total,
       });
     } catch (error) {

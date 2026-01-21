@@ -296,3 +296,110 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export function vectorMagnitude(vector: number[]): number {
   return Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
 }
+
+/**
+ * Result of nearest neighbor search
+ */
+export interface NeighborResult {
+  id: string;
+  index: number;
+  similarity: number;
+  distance: number;
+}
+
+/**
+ * Find k nearest neighbors of a target vector using cosine similarity
+ *
+ * @param targetVector - The vector to find neighbors for
+ * @param embeddings - Array of {id, vector} objects to search
+ * @param k - Number of neighbors to return
+ * @param excludeIds - Optional set of IDs to exclude from results
+ * @returns Array of neighbor results sorted by similarity (highest first)
+ */
+export function findNearestNeighbors(
+  targetVector: number[],
+  embeddings: Array<{ id: string; vector: number[] }>,
+  k: number,
+  excludeIds?: Set<string>
+): NeighborResult[] {
+  const results: NeighborResult[] = [];
+
+  for (let i = 0; i < embeddings.length; i++) {
+    const embedding = embeddings[i];
+    if (!embedding || (excludeIds && excludeIds.has(embedding.id))) {
+      continue;
+    }
+
+    const similarity = cosineSimilarity(targetVector, embedding.vector);
+    const distance = euclideanDistance(targetVector, embedding.vector);
+
+    results.push({
+      id: embedding.id,
+      index: i,
+      similarity,
+      distance,
+    });
+  }
+
+  // Sort by similarity (highest first) and return top k
+  results.sort((a, b) => b.similarity - a.similarity);
+  return results.slice(0, k);
+}
+
+/**
+ * Find documents that are similar to both target vectors (shared neighbors)
+ *
+ * @param vector1 - First target vector
+ * @param vector2 - Second target vector
+ * @param embeddings - Array of {id, vector} objects to search
+ * @param minSimilarity - Minimum similarity threshold to both vectors
+ * @param maxResults - Maximum number of results to return
+ * @returns Array of neighbor results with combined similarity scores
+ */
+export function findSharedNeighbors(
+  vector1: number[],
+  vector2: number[],
+  embeddings: Array<{ id: string; vector: number[] }>,
+  minSimilarity: number = 0.5,
+  maxResults: number = 10
+): Array<NeighborResult & { similarity1: number; similarity2: number }> {
+  const results: Array<NeighborResult & { similarity1: number; similarity2: number }> = [];
+
+  for (let i = 0; i < embeddings.length; i++) {
+    const embedding = embeddings[i];
+    if (!embedding) continue;
+
+    const similarity1 = cosineSimilarity(vector1, embedding.vector);
+    const similarity2 = cosineSimilarity(vector2, embedding.vector);
+
+    // Must meet minimum similarity to both vectors
+    if (similarity1 >= minSimilarity && similarity2 >= minSimilarity) {
+      const avgSimilarity = (similarity1 + similarity2) / 2;
+      const distance = (euclideanDistance(vector1, embedding.vector) +
+                       euclideanDistance(vector2, embedding.vector)) / 2;
+
+      results.push({
+        id: embedding.id,
+        index: i,
+        similarity: avgSimilarity,
+        distance,
+        similarity1,
+        similarity2,
+      });
+    }
+  }
+
+  // Sort by average similarity (highest first) and return top results
+  results.sort((a, b) => b.similarity - a.similarity);
+  return results.slice(0, maxResults);
+}
+
+/**
+ * Compute the midpoint vector between two vectors
+ */
+export function computeMidpointVector(vector1: number[], vector2: number[]): number[] {
+  if (vector1.length !== vector2.length) {
+    throw new Error('Vectors must have the same length');
+  }
+  return vector1.map((val, i) => ((val || 0) + (vector2[i] || 0)) / 2);
+}
