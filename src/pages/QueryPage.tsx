@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConnectionStore } from '@/stores/connection-store';
+import { useCollections } from '@/hooks/use-chromadb';
+import { QueryBuilder } from '@/components/query/QueryBuilder';
 
 function QueryPage() {
   const navigate = useNavigate();
   const { activeConnectionId } = useConnectionStore();
+  const { data: collections } = useCollections();
+  const [selectedCollection, setSelectedCollection] = useState<string | undefined>();
 
   // Show empty state if no connection is active
   if (!activeConnectionId) {
@@ -24,9 +30,30 @@ function QueryPage() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Query Builder</h1>
-      <p className="text-muted-foreground">Query builder will be implemented in Phase 5</p>
+    <div className="flex flex-col h-full">
+      {/* Collection Selector Header */}
+      <div className="border-b p-4">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium">Collection:</label>
+          <Select value={selectedCollection} onValueChange={setSelectedCollection}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Select a collection" />
+            </SelectTrigger>
+            <SelectContent>
+              {collections?.map((collection) => (
+                <SelectItem key={collection.name} value={collection.name}>
+                  {collection.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Query Builder */}
+      <div className="flex-1 overflow-hidden">
+        <QueryBuilder collectionName={selectedCollection} />
+      </div>
     </div>
   );
 }
