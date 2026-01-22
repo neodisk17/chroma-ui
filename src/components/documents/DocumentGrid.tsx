@@ -1,193 +1,36 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import type { ColDef, GridReadyEvent, SelectionChangedEvent, ICellRendererParams, GridApi } from 'ag-grid-community';
+import type { ColDef, GridReadyEvent, SelectionChangedEvent, GridApi } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-// Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
-import {
-  Eye,
-  Edit,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  X,
-  Plus,
-  RefreshCw,
-  Upload,
-} from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Skeleton } from '../ui/skeleton';
-import { Badge } from '../ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+
 import { useDocuments } from '../../hooks/use-chromadb';
 import { DocumentDetail } from './DocumentDetail';
 import { AddEditDocumentDialog } from './AddEditDocumentDialog';
 import { DeleteDocumentDialog } from './DeleteDocumentDialog';
 import { BulkImportDialog } from './BulkImportDialog';
+import {
+  DocumentGridToolbar,
+  BulkActionsToolbar,
+  PaginationControls,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+  DocumentCellRenderer,
+  MetadataCellRenderer,
+  ActionsCellRenderer,
+} from './document-grid';
 import type { Document } from '../../../shared/schemas';
 
 interface DocumentGridProps {
   collectionName: string | undefined;
 }
 
-// Cell renderer for document text (show preview)
-const DocumentCellRenderer = (params: ICellRendererParams<Document>) => {
-  const text = params.value || '';
-  const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
-
-  return (
-    <div className="flex h-full items-center" title={text}>
-      <span className="truncate">{preview}</span>
-    </div>
-  );
-};
-
-// Number of badges to show before "+N more"
-const MAX_VISIBLE_BADGES = 3;
-
-// Format metadata value for display
-const formatMetadataValue = (value: unknown): string => {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'string') {
-    // Truncate long strings
-    return value.length > 20 ? value.substring(0, 20) + '...' : value;
-  }
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return value.toString();
-  if (value instanceof Date) return value.toLocaleDateString();
-  return JSON.stringify(value);
-};
-
-// Cell renderer for metadata (show as badges with tooltips)
-const MetadataCellRenderer = (params: ICellRendererParams<Document>) => {
-  const metadata = params.value as Record<string, unknown> | null | undefined;
-
-  if (!metadata || Object.keys(metadata).length === 0) {
-    return <span className="text-muted-foreground text-xs">No metadata</span>;
-  }
-
-  // Sort keys alphabetically
-  const sortedKeys = Object.keys(metadata).sort();
-  const visibleKeys = sortedKeys.slice(0, MAX_VISIBLE_BADGES);
-  const hiddenKeys = sortedKeys.slice(MAX_VISIBLE_BADGES);
-  const hasMore = hiddenKeys.length > 0;
-
-  return (
-    <TooltipProvider delayDuration={200}>
-      <div className="flex h-full items-center gap-1 py-1">
-        {visibleKeys.map((key) => (
-          <Tooltip key={key}>
-            <TooltipTrigger asChild>
-              <Badge
-                variant="secondary"
-                className="cursor-default truncate max-w-[100px] text-xs"
-              >
-                {formatMetadataValue(metadata[key])}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <span className="font-medium">{key}</span>
-            </TooltipContent>
-          </Tooltip>
-        ))}
-
-        {hasMore && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Badge
-                variant="outline"
-                className="cursor-pointer hover:bg-secondary text-xs"
-              >
-                +{hiddenKeys.length} more
-              </Badge>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="start">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">All Metadata</h4>
-                <div className="space-y-2">
-                  {sortedKeys.map((key) => (
-                    <div key={key} className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground text-sm shrink-0">
-                        {key}
-                      </span>
-                      <Badge variant="secondary" className="truncate max-w-[180px] text-xs">
-                        {formatMetadataValue(metadata[key])}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-      </div>
-    </TooltipProvider>
-  );
-};
-
-// Cell renderer for actions
-interface ActionsCellRendererParams extends ICellRendererParams<Document> {
-  onView?: (document: Document) => void;
-  onEdit?: (document: Document) => void;
-  onDelete?: (ids: string[]) => void;
-}
-
-const ActionsCellRenderer = (params: ActionsCellRendererParams) => {
-  const { onView, onEdit, onDelete } = params;
-
-  return (
-    <div className="flex h-full items-center gap-1">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => onView?.(params.data!)}
-        title="View"
-      >
-        <Eye className="h-3 w-3" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => onEdit?.(params.data!)}
-        title="Edit"
-      >
-        <Edit className="h-3 w-3" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 text-destructive"
-        onClick={() => onDelete?.([params.data!.id])}
-        title="Delete"
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
-    </div>
-  );
-};
-
 /**
  * DocumentGrid component - high-performance document grid with AG Grid
- *
- * Features:
- * - Virtual scrolling for large datasets
- * - Pagination controls
- * - Row selection (checkbox column)
- * - Column resize, sort, filter
- * - Custom cell renderers
- * - Bulk actions toolbar
- * - Export to JSON/CSV
- * - Column configuration persistence
- * - Loading states and error handling
  */
 export const DocumentGrid = React.memo(function DocumentGrid({
   collectionName,
@@ -228,6 +71,12 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     setPage(0);
     setSelectedRows([]);
   }, [collectionName]);
+
+  // View document handler
+  const handleView = useCallback((document: Document) => {
+    setSelectedDocument(document);
+    setShowDetail(true);
+  }, []);
 
   // Handler for edit document
   const handleEdit = useCallback((document: Document) => {
@@ -281,7 +130,7 @@ export const DocumentGrid = React.memo(function DocumentGrid({
         filter: false,
       },
     ];
-  }, [handleEdit, handleDelete]);
+  }, [handleView, handleEdit, handleDelete]);
 
   // Convert data to row format
   const rowData = useMemo(() => {
@@ -324,12 +173,6 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     setSelectedRows(selected);
   }, []);
 
-  // View document handler
-  function handleView(document: Document) {
-    setSelectedDocument(document);
-    setShowDetail(true);
-  }
-
   // Export to JSON
   const handleExportJSON = useCallback(() => {
     const dataToExport = selectedRows.length > 0 ? selectedRows : rowData;
@@ -349,13 +192,10 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   const handleExportCSV = useCallback(() => {
     const dataToExport = selectedRows.length > 0 ? selectedRows : rowData;
 
-    // CSV headers
     const headers = ['ID', 'Document', 'Metadata'];
-
-    // CSV rows
     const rows = dataToExport.map((row) => [
       row.id,
-      `"${(row.document || '').replace(/"/g, '""')}"`, // Escape quotes
+      `"${(row.document || '').replace(/"/g, '""')}"`,
       `"${JSON.stringify(row.metadata || {}).replace(/"/g, '""')}"`,
     ]);
 
@@ -388,110 +228,35 @@ export const DocumentGrid = React.memo(function DocumentGrid({
 
   // Loading skeleton
   if (isLoading && !data) {
-    return (
-      <div className="flex h-full flex-col">
-        <div className="space-y-4 p-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   // Error state
   if (error) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-        <div className="max-w-md space-y-4">
-          <p className="text-lg font-semibold text-destructive">Failed to load documents</p>
-          <p className="text-sm text-muted-foreground">{error.message}</p>
-          <Button onClick={() => refetch()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
+    return <ErrorState message={error.message} onRetry={() => refetch()} />;
   }
 
   // Empty state
   if (!data || data.ids.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-        <div className="max-w-md space-y-4">
-          <p className="text-lg font-semibold">No documents in this collection</p>
-          <p className="text-sm text-muted-foreground">
-            Add your first document to get started
-          </p>
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Document
-          </Button>
-        </div>
-      </div>
-    );
+    return <EmptyState onAddDocument={() => setShowAddDialog(true)} />;
   }
 
   return (
     <div className="flex h-full flex-col">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b p-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold">Documents</h2>
-          <Badge variant="outline">
-            {totalDocuments.toLocaleString()} total
-          </Badge>
-        </div>
+      <DocumentGridToolbar
+        totalDocuments={totalDocuments}
+        onRefresh={() => refetch()}
+        onImport={() => setShowImportDialog(true)}
+        onAdd={() => setShowAddDialog(true)}
+      />
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Import
-          </Button>
-          <Button size="sm" onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Document
-          </Button>
-        </div>
-      </div>
-
-      {/* Bulk actions toolbar */}
-      {selectedRows.length > 0 && (
-        <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              {selectedRows.length} document{selectedRows.length !== 1 ? 's' : ''} selected
-            </span>
-            <Button variant="ghost" size="sm" onClick={handleClearSelection}>
-              <X className="mr-1 h-3 w-3" />
-              Clear
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportJSON}>
-              <Download className="mr-2 h-4 w-4" />
-              Export JSON
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportCSV}>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDeleteSelected}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Selected
-            </Button>
-          </div>
-        </div>
-      )}
+      <BulkActionsToolbar
+        selectedCount={selectedRows.length}
+        onClearSelection={handleClearSelection}
+        onExportJSON={handleExportJSON}
+        onExportCSV={handleExportCSV}
+        onDeleteSelected={handleDeleteSelected}
+      />
 
       {/* AG Grid */}
       <div className="ag-theme-alpine flex-1">
@@ -513,73 +278,14 @@ export const DocumentGrid = React.memo(function DocumentGrid({
         />
       </div>
 
-      {/* Pagination controls */}
-      <div className="flex items-center justify-between border-t p-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
-          <Select
-            value={pageSize.toString()}
-            onValueChange={(value) => {
-              setPageSize(Number(value));
-              setPage(0);
-            }}
-          >
-            <SelectTrigger className="w-20">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="500">500</SelectItem>
-              <SelectItem value="1000">1000</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {totalPages}
-            {' · '}
-            Showing {page * pageSize + 1} - {Math.min((page + 1) * pageSize, totalDocuments)} of{' '}
-            {totalDocuments}
-          </span>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            <Input
-              type="number"
-              min="1"
-              max={totalPages}
-              value={page + 1}
-              onChange={(e) => {
-                const newPage = Number(e.target.value) - 1;
-                if (newPage >= 0 && newPage < totalPages) {
-                  setPage(newPage);
-                }
-              }}
-              className="w-16 text-center"
-            />
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-              disabled={page >= totalPages - 1}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PaginationControls
+        page={page}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        totalDocuments={totalDocuments}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
 
       {/* Document detail panel */}
       {showDetail && selectedDocument && (

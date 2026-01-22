@@ -1,53 +1,21 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import {
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ZAxis,
-  Cell,
-} from 'recharts';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Loader2, ZoomIn, ZoomOut, RotateCcw, Download, Image, FileText, FileJson, AlertCircle, Move } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { reduceTo2D, euclideanDistance, cosineSimilarity, Point2D } from '@/lib/pca';
+import { reduceTo2D, euclideanDistance, cosineSimilarity } from '@/lib/pca';
 import PcaWorker from '@/workers/pca.worker?worker';
-import type { Metadata } from '@/types/chromadb.types';
 
-const MAX_POINTS = 1000; // Maximum points to visualize for performance
+import {
+  PlotControls,
+  ColorLegend,
+  SampledWarning,
+  LoadingState,
+  EmbeddingScatterChart,
+  MAX_POINTS,
+} from './embedding-plot';
+import type { EmbeddingData, EmbeddingPlotProps, PlotPoint } from './embedding-plot';
 
-export interface EmbeddingData {
-  id: string;
-  vector: number[];
-  document: string;
-  metadata?: Metadata;
-}
-
-interface EmbeddingPlotProps {
-  embeddings: EmbeddingData[];
-  selectedId?: string;
-  onPointClick?: (id: string) => void;
-}
-
-interface PlotPoint extends Point2D {
-  id: string;
-  document: string;
-  metadata?: Metadata;
-  distance?: number;
-  similarity?: number;
-}
+// Re-export types for external use
+export type { EmbeddingData, EmbeddingPlotProps };
 
 /**
  * EmbeddingPlot component - Interactive 2D visualization of embeddings
@@ -93,7 +61,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
   }, []);
 
   // Check if embeddings need reduction
-  const needsReduction = embeddings.length > 0 && embeddings[0] && embeddings[0].vector.length > 2;
+  const needsReduction = embeddings.length > 0 && embeddings[0] != null && embeddings[0].vector.length > 2;
 
   // Selected embedding data
   const selectedEmbedding = useMemo(() => {
@@ -119,50 +87,52 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     return sampled;
   }, [embeddings]);
 
+  // Create plot data from reduced points
+  const createPlotData = useCallback((points2D: { x: number; y: number }[]): PlotPoint[] => {
+    return sampledEmbeddings.map((embedding, index) => {
+      const point = points2D[index];
+      if (!point) {
+        return {
+          x: 0,
+          y: 0,
+          id: embedding.id,
+          document: embedding.document,
+          metadata: embedding.metadata,
+        };
+      }
+
+      let distance: number | undefined;
+      let similarity: number | undefined;
+
+      if (selectedEmbedding) {
+        distance = euclideanDistance(embedding.vector, selectedEmbedding.vector);
+        similarity = cosineSimilarity(embedding.vector, selectedEmbedding.vector);
+      }
+
+      return {
+        x: point.x,
+        y: point.y,
+        id: embedding.id,
+        document: embedding.document,
+        metadata: embedding.metadata,
+        distance,
+        similarity,
+      };
+    });
+  }, [sampledEmbeddings, selectedEmbedding]);
+
   // Fallback to main thread computation
   const fallbackReduce = useCallback(() => {
     try {
       const vectors = sampledEmbeddings.map(e => e.vector);
       const points2D = reduceTo2D(vectors);
-
-      const plotData: PlotPoint[] = sampledEmbeddings.map((embedding, index) => {
-        const point = points2D[index];
-        if (!point) {
-          return {
-            x: 0,
-            y: 0,
-            id: embedding.id,
-            document: embedding.document,
-            metadata: embedding.metadata,
-          };
-        }
-
-        let distance: number | undefined;
-        let similarity: number | undefined;
-
-        if (selectedEmbedding) {
-          distance = euclideanDistance(embedding.vector, selectedEmbedding.vector);
-          similarity = cosineSimilarity(embedding.vector, selectedEmbedding.vector);
-        }
-
-        return {
-          x: point.x,
-          y: point.y,
-          id: embedding.id,
-          document: embedding.document,
-          metadata: embedding.metadata,
-          distance,
-          similarity,
-        };
-      });
-
-      setReducedData(plotData);
+      setReducedData(createPlotData(points2D));
     } catch (error) {
       console.error('Failed to reduce embeddings:', error);
     } finally {
       setIsReducing(false);
     }
-  }, [sampledEmbeddings, selectedEmbedding]);
+  }, [sampledEmbeddings, createPlotData]);
 
   // Reduce to 2D using PCA via Web Worker
   const handleReduce = useCallback(async () => {
@@ -185,45 +155,11 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
       if (type === 'progress') {
         setProgress(p);
       } else if (type === 'complete') {
-        // Combine with original data
-        const plotData: PlotPoint[] = sampledEmbeddings.map((embedding, index) => {
-          const point = result[index];
-          if (!point) {
-            return {
-              x: 0,
-              y: 0,
-              id: embedding.id,
-              document: embedding.document,
-              metadata: embedding.metadata,
-            };
-          }
-
-          let distance: number | undefined;
-          let similarity: number | undefined;
-
-          // Compute distance and similarity to selected point if any
-          if (selectedEmbedding) {
-            distance = euclideanDistance(embedding.vector, selectedEmbedding.vector);
-            similarity = cosineSimilarity(embedding.vector, selectedEmbedding.vector);
-          }
-
-          return {
-            x: point.x,
-            y: point.y,
-            id: embedding.id,
-            document: embedding.document,
-            metadata: embedding.metadata,
-            distance,
-            similarity,
-          };
-        });
-
-        setReducedData(plotData);
+        setReducedData(createPlotData(result));
         setIsReducing(false);
         setProgress(100);
       } else if (type === 'error') {
         console.error('Worker error:', error);
-        // Fallback to main thread
         fallbackReduce();
       }
     };
@@ -236,7 +172,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     // Start computation
     const vectors = sampledEmbeddings.map(e => e.vector);
     worker.postMessage({ type: 'compute', embeddings: vectors });
-  }, [embeddings.length, sampledEmbeddings, selectedEmbedding, fallbackReduce]);
+  }, [embeddings.length, sampledEmbeddings, createPlotData, fallbackReduce]);
 
   // Automatically reduce if embeddings are already 2D
   useMemo(() => {
@@ -244,43 +180,11 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
       setIsSampled(embeddings.length > MAX_POINTS);
       const vectors = sampledEmbeddings.map(e => e.vector);
       const points2D = reduceTo2D(vectors);
-
-      const plotData: PlotPoint[] = sampledEmbeddings.map((embedding, index) => {
-        const point = points2D[index];
-        if (!point) {
-          return {
-            x: 0,
-            y: 0,
-            id: embedding.id,
-            document: embedding.document,
-            metadata: embedding.metadata,
-          };
-        }
-
-        let distance: number | undefined;
-        let similarity: number | undefined;
-
-        if (selectedEmbedding) {
-          distance = euclideanDistance(embedding.vector, selectedEmbedding.vector);
-          similarity = cosineSimilarity(embedding.vector, selectedEmbedding.vector);
-        }
-
-        return {
-          x: point.x,
-          y: point.y,
-          id: embedding.id,
-          document: embedding.document,
-          metadata: embedding.metadata,
-          distance,
-          similarity,
-        };
-      });
-
-      setReducedData(plotData);
+      setReducedData(createPlotData(points2D));
     }
-  }, [embeddings.length, sampledEmbeddings, needsReduction, selectedEmbedding]);
+  }, [embeddings.length, sampledEmbeddings, needsReduction, createPlotData]);
 
-  // Export as PNG
+  // Export handlers
   const handleExportPng = useCallback(async () => {
     if (!plotRef.current || !reducedData) return;
 
@@ -302,7 +206,6 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     }
   }, [reducedData]);
 
-  // Export as CSV
   const handleExportCsv = useCallback(() => {
     if (!reducedData) return;
 
@@ -331,7 +234,6 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     URL.revokeObjectURL(url);
   }, [reducedData]);
 
-  // Export as JSON
   const handleExportJson = useCallback(() => {
     const exportData = embeddings.map((embedding, index) => ({
       id: embedding.id,
@@ -358,25 +260,16 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
 
   // Get color for point based on selection and distance
   const getPointColor = useCallback((point: PlotPoint) => {
-    // Selected point
-    if (point.id === selectedId) {
-      return '#ef4444'; // red
-    }
+    if (point.id === selectedId) return '#ef4444'; // red - selected
+    if (point.id === hoveredId) return '#f97316'; // orange - hovered
 
-    // Hovered point
-    if (point.id === hoveredId) {
-      return '#f97316'; // orange
-    }
-
-    // Color by distance if point is selected
     if (selectedId && point.distance !== undefined) {
       if (point.distance < 0.2) return '#22c55e'; // green - very similar
       if (point.distance < 0.5) return '#eab308'; // yellow - similar
       return '#3b82f6'; // blue - different
     }
 
-    // Default
-    return '#3b82f6'; // blue
+    return '#3b82f6'; // blue - default
   }, [selectedId, hoveredId]);
 
   // Get point radius based on selection
@@ -400,7 +293,6 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     const yMin = Math.min(...yValues);
     const yMax = Math.max(...yValues);
 
-    // Add some padding (10%)
     const xPadding = (xMax - xMin) * 0.1 || 0.1;
     const yPadding = (yMax - yMin) * 0.1 || 0.1;
 
@@ -410,49 +302,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     };
   }, [reducedData]);
 
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: PlotPoint }> }) => {
-    if (!active || !payload || payload.length === 0 || !payload[0]?.payload) return null;
-
-    const point = payload[0].payload;
-    const docPreview = point.document.length > 100
-      ? point.document.substring(0, 100) + '...'
-      : point.document;
-
-    return (
-      <Card className="max-w-sm border-2 shadow-lg">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-mono">{point.id}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Document:</p>
-            <p className="text-sm">{docPreview}</p>
-          </div>
-          {point.metadata && Object.keys(point.metadata).length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Metadata:</p>
-              <pre className="text-xs font-mono bg-muted p-1 rounded overflow-auto max-h-20">
-                {JSON.stringify(point.metadata, null, 2)}
-              </pre>
-            </div>
-          )}
-          {selectedId && point.id !== selectedId && (
-            <div className="flex gap-2 pt-2 border-t">
-              <Badge variant="outline" className="text-xs">
-                Distance: {point.distance?.toFixed(4)}
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Similarity: {((point.similarity || 0) * 100).toFixed(1)}%
-              </Badge>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Handle zoom
+  // Zoom handlers
   const handleZoomIn = useCallback(() => {
     if (!reducedData) return;
     const currentDomain = zoomDomain || dataBounds;
@@ -475,7 +325,6 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     const xCenter = (currentDomain.x[0] + currentDomain.x[1]) / 2;
     const yCenter = (currentDomain.y[0] + currentDomain.y[1]) / 2;
 
-    // Allow zooming out up to 2x the original bounds
     const maxXRange = (dataBounds.x[1] - dataBounds.x[0]) * 2;
     const maxYRange = (dataBounds.y[1] - dataBounds.y[0]) * 2;
     const newXRange = Math.min(xRange * 2, maxXRange);
@@ -491,18 +340,17 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     setZoomDomain(null);
   }, []);
 
-  // Pan handlers for dragging when zoomed
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!zoomDomainRef.current) return; // Only allow panning when zoomed
+  // Pan handlers
+  const handlePanStart = useCallback((e: React.MouseEvent) => {
+    if (!zoomDomainRef.current) return;
     e.preventDefault();
     setIsPanning(true);
     panStartRef.current = { x: e.clientX, y: e.clientY };
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePanMove = useCallback((e: React.MouseEvent) => {
     if (!panStartRef.current || !zoomDomainRef.current || !plotRef.current) return;
 
-    // Cancel any pending animation frame
     if (rafIdRef.current) {
       cancelAnimationFrame(rafIdRef.current);
     }
@@ -514,19 +362,18 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
       if (!panStartRef.current || !zoomDomainRef.current || !plotRef.current) return;
 
       const plotRect = plotRef.current.getBoundingClientRect();
-      const plotWidth = plotRect.width - 40; // Account for margins
-      const plotHeight = 500 - 40; // Account for margins
+      const plotWidth = plotRect.width - 40;
+      const plotHeight = 500 - 40;
 
       const dx = clientX - panStartRef.current.x;
       const dy = clientY - panStartRef.current.y;
 
-      // Convert pixel movement to data units
       const currentDomain = zoomDomainRef.current;
       const xRange = currentDomain.x[1] - currentDomain.x[0];
       const yRange = currentDomain.y[1] - currentDomain.y[0];
 
       const xDelta = -(dx / plotWidth) * xRange;
-      const yDelta = (dy / plotHeight) * yRange; // Inverted because Y axis is flipped
+      const yDelta = (dy / plotHeight) * yRange;
 
       const newDomain = {
         x: [currentDomain.x[0] + xDelta, currentDomain.x[1] + xDelta] as [number, number],
@@ -539,15 +386,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     });
   }, []);
 
-  const handleMouseUp = useCallback(() => {
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current);
-    }
-    setIsPanning(false);
-    panStartRef.current = null;
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
+  const handlePanEnd = useCallback(() => {
     if (rafIdRef.current) {
       cancelAnimationFrame(rafIdRef.current);
     }
@@ -578,150 +417,43 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
-            {needsReduction && !reducedData && (
-              <Button onClick={handleReduce} disabled={isReducing}>
-                {isReducing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Reduce to 2D
-              </Button>
-            )}
-            {reducedData && (
-              <>
-                <Button variant="outline" size="icon" onClick={handleZoomIn} title="Zoom in">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleZoomOut} title="Zoom out">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleResetView} title="Reset view">
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" disabled={isExporting}>
-                      {isExporting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleExportPng}>
-                      <Image className="mr-2 h-4 w-4" />
-                      Export as PNG
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportCsv}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Export 2D Coordinates (CSV)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportJson}>
-                      <FileJson className="mr-2 h-4 w-4" />
-                      Export Full Data (JSON)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-          </div>
+          <PlotControls
+            needsReduction={needsReduction}
+            hasReducedData={!!reducedData}
+            isReducing={isReducing}
+            isExporting={isExporting}
+            onReduce={handleReduce}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetView={handleResetView}
+            onExportPng={handleExportPng}
+            onExportCsv={handleExportCsv}
+            onExportJson={handleExportJson}
+          />
         </div>
-        {selectedId && reducedData && (
-          <div className="flex items-center gap-2 pt-2">
-            <span className="text-sm text-muted-foreground">Color legend:</span>
-            <Badge variant="outline" className="bg-green-500/20 text-green-700">
-              Very Similar (&lt; 0.2)
-            </Badge>
-            <Badge variant="outline" className="bg-yellow-500/20 text-yellow-700">
-              Similar (0.2-0.5)
-            </Badge>
-            <Badge variant="outline" className="bg-blue-500/20 text-blue-700">
-              Different (&gt; 0.5)
-            </Badge>
-          </div>
-        )}
+        {selectedId && reducedData && <ColorLegend />}
       </CardHeader>
       <CardContent>
-        {isSampled && reducedData && (
-          <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-md">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <span>
-              Displaying {MAX_POINTS} of {embeddings.length} documents (sampled for performance)
-            </span>
-          </div>
-        )}
+        {isSampled && reducedData && <SampledWarning totalCount={embeddings.length} />}
+
         {isReducing ? (
-          <div className="flex h-96 items-center justify-center">
-            <div className="text-center space-y-4 w-64">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Computing PCA...</p>
-                <Progress value={progress} className="h-2" />
-                <p className="text-xs text-muted-foreground">{progress}%</p>
-              </div>
-            </div>
-          </div>
+          <LoadingState progress={progress} />
         ) : reducedData ? (
-          <div
-            ref={plotRef}
-            className="bg-white rounded-md p-2"
-            style={{ cursor: zoomDomain ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-          >
-          {zoomDomain && (
-            <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
-              <Move className="h-3 w-3" />
-              <span>Drag to pan</span>
-            </div>
-          )}
-          <ResponsiveContainer width="100%" height={500}>
-            <ScatterChart
-              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-              onClick={(e) => {
-                if (e && 'activePayload' in e && e.activePayload && Array.isArray(e.activePayload) && e.activePayload.length > 0) {
-                  const point = e.activePayload[0].payload as PlotPoint;
-                  onPointClick?.(point.id);
-                }
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                type="number"
-                dataKey="x"
-                name="PC1"
-                domain={zoomDomain ? zoomDomain.x : dataBounds.x}
-                tick={{ fontSize: 12 }}
-                allowDataOverflow
-              />
-              <YAxis
-                type="number"
-                dataKey="y"
-                name="PC2"
-                domain={zoomDomain ? zoomDomain.y : dataBounds.y}
-                tick={{ fontSize: 12 }}
-                allowDataOverflow
-              />
-              <ZAxis range={[50, 200]} />
-              <Tooltip content={<CustomTooltip />} />
-              <Scatter
-                data={reducedData}
-                onMouseEnter={(data: PlotPoint) => setHoveredId(data.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                style={{ cursor: 'pointer' }}
-              >
-                {reducedData.map((point) => (
-                  <Cell
-                    key={point.id}
-                    fill={getPointColor(point)}
-                    r={getPointRadius(point)}
-                  />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-          </div>
+          <EmbeddingScatterChart
+            data={reducedData}
+            selectedId={selectedId}
+            zoomDomain={zoomDomain}
+            dataBounds={dataBounds}
+            isPanning={isPanning}
+            plotRef={plotRef}
+            onPointClick={onPointClick}
+            onHover={setHoveredId}
+            onPanStart={handlePanStart}
+            onPanMove={handlePanMove}
+            onPanEnd={handlePanEnd}
+            getPointColor={getPointColor}
+            getPointRadius={getPointRadius}
+          />
         ) : (
           <div className="flex h-96 items-center justify-center">
             <div className="text-center space-y-2">
