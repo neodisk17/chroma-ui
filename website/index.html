@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Chroma UI - The missing UI for ChromaDB. Manage your vector database visually with a powerful desktop app for macOS, Windows, and Linux.">
+  <meta name="keywords" content="ChromaDB, vector database, embeddings, UI, desktop app, RAG, AI, machine learning">
+  <title>Chroma UI - The Missing UI for ChromaDB</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%238B5CF6'/%3E%3Cstop offset='100%25' style='stop-color:%2306B6D4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='45' fill='url(%23g)'/%3E%3C/svg%3E">
+
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="gradient-bg"></div>
+  <div class="noise-overlay"></div>
+
+  <!-- Navigation -->
+  <nav id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 32 32" fill="none">
+            <defs>
+              <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8B5CF6"/>
+                <stop offset="100%" stop-color="#06B6D4"/>
+              </linearGradient>
+            </defs>
+            <circle cx="16" cy="16" r="14" stroke="url(#logoGradient)" stroke-width="2.5" fill="none"/>
+            <circle cx="16" cy="16" r="4" fill="url(#logoGradient)"/>
+            <circle cx="16" cy="7" r="2.5" fill="url(#logoGradient)"/>
+            <circle cx="23.5" cy="20.5" r="2.5" fill="url(#logoGradient)"/>
+            <circle cx="8.5" cy="20.5" r="2.5" fill="url(#logoGradient)"/>
+          </svg>
+        </div>
+        <span>Chroma UI</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#download">Download</a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="https://github.com/AugustinMauworworwor/chroma-ui" target="_blank" rel="noopener noreferrer" class="github-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>Star</span>
+          <span class="github-stars">1.2k</span>
+        </a>
+      </div>
+
+      <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="mobile-menu">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/AugustinMauworworwor/chroma-ui" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        <span>Open Source & Free Forever</span>
+      </div>
+
+      <h1 class="hero-title">
+        The missing UI for<br>
+        <span class="gradient-text">ChromaDB</span>
+      </h1>
+
+      <p class="hero-description">
+        Stop wrestling with CLI commands. Visualize your vector embeddings,
+        query collections, and manage your RAG pipeline with a beautiful desktop app.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#download" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download for Free
+        </a>
+        <a href="https://github.com/AugustinMauworworwor/chroma-ui" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          View Source
+        </a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value">10k+</span>
+          <span class="stat-label">Downloads</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">1.2k</span>
+          <span class="stat-label">GitHub Stars</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">MIT</span>
+          <span class="stat-label">Licensed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="app-window">
+        <div class="window-header">
+          <div class="window-controls">
+            <span class="control close"></span>
+            <span class="control minimize"></span>
+            <span class="control maximize"></span>
+          </div>
+          <span class="window-title">Chroma UI</span>
+        </div>
+        <div class="window-content">
+          <img src="images/hero-screenshot.png" alt="Chroma UI Dashboard" onerror="this.parentElement.innerHTML='<div class=\'placeholder-content\'><div class=\'placeholder-sidebar\'></div><div class=\'placeholder-main\'><div class=\'placeholder-header\'></div><div class=\'placeholder-grid\'></div></div></div>'">
+        </div>
+      </div>
+      <!-- Floating Elements -->
+      <div class="floating-card card-1">
+        <div class="floating-icon purple">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="floating-text">
+          <span class="floating-title">Query Complete</span>
+          <span class="floating-subtitle">Found 847 similar vectors</span>
+        </div>
+      </div>
+      <div class="floating-card card-2">
+        <div class="floating-icon cyan">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+          </svg>
+        </div>
+        <div class="floating-text">
+          <span class="floating-title">my_embeddings</span>
+          <span class="floating-subtitle">12,847 documents</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trusted By / Tech Badges -->
+  <section class="social-proof">
+    <p class="social-proof-text">Built for teams using</p>
+    <div class="tech-badges">
+      <div class="tech-badge">
+        <span class="badge-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zM6.001 12c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624 1.177 1.194 2.538 2.576 5.512 2.576 3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.337 13.382 8.976 12 6.001 12z"/>
+          </svg>
+        </span>
+        LangChain
+      </div>
+      <div class="tech-badge">
+        <span class="badge-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </span>
+        LlamaIndex
+      </div>
+      <div class="tech-badge">
+        <span class="badge-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+        </span>
+        OpenAI
+      </div>
+      <div class="tech-badge">
+        <span class="badge-icon">HF</span>
+        Hugging Face
+      </div>
+      <div class="tech-badge">
+        <span class="badge-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+          </svg>
+        </span>
+        Anthropic
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features">
+    <div class="section-header">
+      <span class="section-badge">Features</span>
+      <h2 class="section-title">Everything you need to<br><span class="gradient-text">manage vectors</span></h2>
+      <p class="section-description">
+        A complete toolkit for developers building RAG applications, semantic search, and AI-powered features.
+      </p>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="bento-grid">
+      <!-- Large Feature: Visual Query Builder -->
+      <div class="bento-card bento-large">
+        <div class="bento-content">
+          <div class="bento-icon purple">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+          </div>
+          <h3 class="bento-title">Visual Query Builder</h3>
+          <p class="bento-description">
+            Build sophisticated similarity searches without writing code. Filter by metadata,
+            adjust thresholds, and see results in real-time.
+          </p>
+          <ul class="bento-list">
+            <li>Semantic search with natural language</li>
+            <li>Metadata filtering ($eq, $gt, $in)</li>
+            <li>Live JSON query preview</li>
+          </ul>
+        </div>
+        <div class="bento-visual">
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-dot"></span>
+              <span class="code-dot"></span>
+              <span class="code-dot"></span>
+              <span class="code-filename">query.json</span>
+            </div>
+            <pre class="code-content"><code>{
+  "query_texts": ["AI research papers"],
+  "n_results": 10,
+  "where": {
+    "category": {"$eq": "research"},
+    "year": {"$gte": 2023}
+  }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medium Feature: 2D Visualization -->
+      <div class="bento-card bento-medium">
+        <div class="bento-icon cyan">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">Embeddings Visualization</h3>
+        <p class="bento-description">
+          See your high-dimensional vectors in 2D. Understand clustering, find outliers, and validate your embeddings.
+        </p>
+        <div class="scatter-preview">
+          <div class="scatter-dot" style="--x: 20%; --y: 30%;"></div>
+          <div class="scatter-dot" style="--x: 25%; --y: 35%;"></div>
+          <div class="scatter-dot" style="--x: 22%; --y: 28%;"></div>
+          <div class="scatter-dot highlight" style="--x: 70%; --y: 60%;"></div>
+          <div class="scatter-dot" style="--x: 75%; --y: 55%;"></div>
+          <div class="scatter-dot" style="--x: 72%; --y: 65%;"></div>
+          <div class="scatter-dot" style="--x: 45%; --y: 80%;"></div>
+          <div class="scatter-dot" style="--x: 50%; --y: 75%;"></div>
+          <div class="scatter-dot" style="--x: 48%; --y: 85%;"></div>
+        </div>
+      </div>
+
+      <!-- Small Feature: Secure Connections -->
+      <div class="bento-card bento-small">
+        <div class="bento-icon green">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">Secure Connections</h3>
+        <p class="bento-description">
+          Credentials stored in OS keychain. Connect to local or remote ChromaDB instances.
+        </p>
+      </div>
+
+      <!-- Small Feature: 10k+ Documents -->
+      <div class="bento-card bento-small">
+        <div class="bento-icon orange">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">10,000+ Documents</h3>
+        <p class="bento-description">
+          Virtual scrolling handles massive collections. Sort, filter, and search instantly.
+        </p>
+      </div>
+
+      <!-- Medium Feature: Document Comparison -->
+      <div class="bento-card bento-medium">
+        <div class="bento-icon pink">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="9"/>
+            <rect x="14" y="3" width="7" height="9"/>
+            <path d="M3 16h18M3 20h18"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">Document Comparison</h3>
+        <p class="bento-description">
+          Compare embeddings side-by-side with similarity scores, distance metrics, and neighborhood analysis.
+        </p>
+        <div class="comparison-preview">
+          <div class="comparison-item">
+            <div class="comparison-bar" style="--width: 95%"></div>
+            <span class="comparison-label">Cosine: 0.95</span>
+          </div>
+          <div class="comparison-item">
+            <div class="comparison-bar" style="--width: 87%"></div>
+            <span class="comparison-label">Cosine: 0.87</span>
+          </div>
+          <div class="comparison-item">
+            <div class="comparison-bar" style="--width: 72%"></div>
+            <span class="comparison-label">Cosine: 0.72</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Small Feature: Bulk Import -->
+      <div class="bento-card bento-small">
+        <div class="bento-icon blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">Bulk Import/Export</h3>
+        <p class="bento-description">
+          JSON and CSV support for easy data migration. Batch operations included.
+        </p>
+      </div>
+
+      <!-- Small Feature: Keyboard Shortcuts -->
+      <div class="bento-card bento-small">
+        <div class="bento-icon yellow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M6 16h12"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">Keyboard Shortcuts</h3>
+        <p class="bento-description">
+          Navigate fast with power-user shortcuts. Vim-style bindings available.
+        </p>
+      </div>
+
+      <!-- Small Feature: Dark Mode -->
+      <div class="bento-card bento-small">
+        <div class="bento-icon violet">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </div>
+        <h3 class="bento-title">Dark & Light Themes</h3>
+        <p class="bento-description">
+          Easy on the eyes during those late-night debugging sessions.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section id="screenshots" class="screenshots">
+    <div class="section-header">
+      <span class="section-badge">See it in action</span>
+      <h2 class="section-title">Built for <span class="gradient-text">real workflows</span></h2>
+      <p class="section-description">
+        From data exploration to production debugging, Chroma UI handles it all.
+      </p>
+    </div>
+
+    <div class="screenshot-tabs">
+      <button class="screenshot-tab active" data-tab="collections">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>
+        </svg>
+        Collections
+      </button>
+      <button class="screenshot-tab" data-tab="documents">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Documents
+      </button>
+      <button class="screenshot-tab" data-tab="query">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="M21 21l-4.35-4.35"/>
+        </svg>
+        Query Builder
+      </button>
+      <button class="screenshot-tab" data-tab="embeddings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <circle cx="19" cy="5" r="2"/>
+          <circle cx="5" cy="19" r="2"/>
+          <line x1="14.5" y1="9.5" x2="17.5" y2="6.5"/>
+          <line x1="9.5" y1="14.5" x2="6.5" y2="17.5"/>
+        </svg>
+        Embeddings
+      </button>
+      <button class="screenshot-tab" data-tab="comparison">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="9"/>
+          <rect x="14" y="3" width="7" height="9"/>
+          <path d="M3 16h18"/>
+        </svg>
+        Comparison
+      </button>
+    </div>
+
+    <div class="screenshot-display">
+      <div class="app-window large">
+        <div class="window-header">
+          <div class="window-controls">
+            <span class="control close"></span>
+            <span class="control minimize"></span>
+            <span class="control maximize"></span>
+          </div>
+          <span class="window-title">Chroma UI - Collections</span>
+        </div>
+        <div class="window-content">
+          <img id="screenshot-img" src="images/screenshot-collections.png" alt="Collections view" onerror="this.src='https://placehold.co/1200x700/1a1a2e/666?text=Screenshot+-+Collections'">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Example Section -->
+  <section class="code-example">
+    <div class="code-example-content">
+      <div class="code-example-text">
+        <span class="section-badge">No learning curve</span>
+        <h2 class="section-title">Works with your<br><span class="gradient-text">existing setup</span></h2>
+        <p class="section-description">
+          Connect to any ChromaDB instance - local, Docker, or cloud-hosted.
+          Your existing Python code works exactly the same.
+        </p>
+        <div class="code-example-features">
+          <div class="code-feature">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span>Connect in seconds</span>
+          </div>
+          <div class="code-feature">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span>No config changes needed</span>
+          </div>
+          <div class="code-feature">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span>Auth & SSL supported</span>
+          </div>
+        </div>
+      </div>
+      <div class="code-example-visual">
+        <div class="terminal">
+          <div class="terminal-header">
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-title">terminal</span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-line">
+              <span class="terminal-prompt">$</span>
+              <span class="terminal-command">chroma run --path ./my_data</span>
+            </div>
+            <div class="terminal-line output">
+              <span class="terminal-success">Running Chroma</span>
+            </div>
+            <div class="terminal-line output">
+              <span>Saving data to: ./my_data</span>
+            </div>
+            <div class="terminal-line output">
+              <span>Connect Chroma UI to:</span>
+            </div>
+            <div class="terminal-line output highlight">
+              <span>http://localhost:8000</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section id="download" class="download">
+    <div class="download-glow"></div>
+    <div class="section-header">
+      <span class="section-badge">Get Started</span>
+      <h2 class="section-title">Download <span class="gradient-text">Chroma UI</span></h2>
+      <p class="section-description">
+        Free and open source. Available for all major platforms.
+      </p>
+    </div>
+
+    <div class="download-cards">
+      <!-- macOS -->
+      <div class="download-card">
+        <div class="download-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+          </svg>
+        </div>
+        <h3 class="download-platform">macOS</h3>
+        <p class="download-arch">Intel & Apple Silicon</p>
+        <a href="#" class="btn btn-download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download .dmg
+        </a>
+      </div>
+
+      <!-- Windows -->
+      <div class="download-card featured">
+        <div class="download-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+          </svg>
+        </div>
+        <h3 class="download-platform">Windows</h3>
+        <p class="download-arch">Windows 10+</p>
+        <a href="#" class="btn btn-download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download .exe
+        </a>
+      </div>
+
+      <!-- Linux -->
+      <div class="download-card">
+        <div class="download-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.504 0c-.155 0-.311.001-.465.003-.653.014-1.293.106-1.893.256a7.376 7.376 0 00-2.396 1.02 7.57 7.57 0 00-1.907 1.768c-.54.7-.98 1.477-1.3 2.316a10.12 10.12 0 00-.618 2.396c-.09.625-.13 1.259-.13 1.897 0 .565.043 1.13.135 1.693.065.395.15.79.26 1.178.094.326.2.65.324.966l.078.195c-.31.382-.48.86-.48 1.368 0 .562.18 1.11.52 1.555.07.09.144.176.224.258-.148.36-.228.747-.228 1.143 0 .602.19 1.188.54 1.67.233.321.524.592.854.802-.11.454-.166.924-.166 1.398 0 1.378.476 2.714 1.348 3.768.356.43.764.815 1.213 1.142a8.173 8.173 0 002.37 1.182c.893.29 1.832.438 2.785.438.957 0 1.9-.148 2.798-.44a8.152 8.152 0 002.368-1.186 6.922 6.922 0 001.216-1.142c.872-1.058 1.346-2.393 1.346-3.766 0-.478-.055-.952-.168-1.41.328-.21.62-.48.85-.8.352-.48.54-1.067.54-1.668 0-.396-.078-.783-.228-1.143.08-.082.154-.168.224-.258.34-.446.52-.993.52-1.555 0-.508-.17-.986-.478-1.368l.078-.195c.123-.318.23-.64.323-.966.11-.388.196-.783.26-1.178.093-.563.136-1.128.136-1.693 0-.638-.04-1.272-.13-1.897a10.12 10.12 0 00-.618-2.396 8.483 8.483 0 00-1.3-2.316 7.57 7.57 0 00-1.908-1.768 7.376 7.376 0 00-2.395-1.02A9.39 9.39 0 0012.969.003C12.814.001 12.659 0 12.504 0"/>
+          </svg>
+        </div>
+        <h3 class="download-platform">Linux</h3>
+        <p class="download-arch">AppImage & .deb</p>
+        <a href="#" class="btn btn-download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download
+        </a>
+      </div>
+    </div>
+
+    <p class="download-version">v1.0.0 &middot; Requires ChromaDB 0.4+</p>
+  </section>
+
+  <!-- Open Source Section -->
+  <section class="open-source">
+    <div class="open-source-content">
+      <div class="open-source-main">
+        <div class="github-card">
+          <div class="github-card-header">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <div>
+              <h3>100% Open Source</h3>
+              <p>MIT Licensed - Free forever</p>
+            </div>
+          </div>
+          <p class="github-card-description">
+            View the code, report issues, and contribute. Built by the community, for the community.
+          </p>
+          <a href="https://github.com/AugustinMauworworwor/chroma-ui" target="_blank" rel="noopener noreferrer" class="btn btn-github">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+      <div class="open-source-ways">
+        <h4>Ways to contribute</h4>
+        <ul class="contribute-list">
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Report bugs and request features
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"/>
+              <polyline points="8 6 2 12 8 18"/>
+            </svg>
+            Submit pull requests
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Improve documentation
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Share with your network
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <a href="#" class="footer-logo">
+          <div class="logo-icon small">
+            <svg viewBox="0 0 32 32" fill="none">
+              <defs>
+                <linearGradient id="footerLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#8B5CF6"/>
+                  <stop offset="100%" stop-color="#06B6D4"/>
+                </linearGradient>
+              </defs>
+              <circle cx="16" cy="16" r="14" stroke="url(#footerLogoGradient)" stroke-width="2.5" fill="none"/>
+              <circle cx="16" cy="16" r="4" fill="url(#footerLogoGradient)"/>
+            </svg>
+          </div>
+          <span>Chroma UI</span>
+        </a>
+        <p class="footer-tagline">The missing UI for ChromaDB</p>
+      </div>
+
+      <div class="footer-links">
+        <div class="footer-column">
+          <h5>Product</h5>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#screenshots">Screenshots</a></li>
+            <li><a href="#download">Download</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h5>Resources</h5>
+          <ul>
+            <li><a href="https://docs.trychroma.com/" target="_blank" rel="noopener noreferrer">ChromaDB Docs</a></li>
+            <li><a href="https://github.com/AugustinMauworworwor/chroma-ui/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h5>Community</h5>
+          <ul>
+            <li><a href="https://github.com/AugustinMauworworwor/chroma-ui" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            <li><a href="https://discord.gg/chromadb" target="_blank" rel="noopener noreferrer">Discord</a></li>
+            <li><a href="https://twitter.com/traborta" target="_blank" rel="noopener noreferrer">Twitter</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2024 Chroma UI. Built for the vector database community.</p>
+      <div class="footer-bottom-links">
+        <a href="https://github.com/AugustinMauworworwor/chroma-ui/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script src="js/main.js"></script>
+</body>
+</html>
