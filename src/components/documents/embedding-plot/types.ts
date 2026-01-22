@@ -12,8 +12,10 @@ export interface EmbeddingData {
 
 export interface EmbeddingPlotProps {
   embeddings: EmbeddingData[];
-  selectedId?: string;
+  selectedIds?: string[];
+  colorByField?: string | null;
   onPointClick?: (id: string) => void;
+  onPointContextMenu?: (id: string, event: React.MouseEvent) => void;
 }
 
 export interface PlotPoint extends Point2D {
@@ -22,4 +24,9 @@ export interface PlotPoint extends Point2D {
   metadata?: Metadata;
   distance?: number;
   similarity?: number;
+}
+
+export interface ColorMapping {
+  field: string;
+  valueColors: Map<string, string>;
 }

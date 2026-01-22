@@ -10,12 +10,28 @@ import {
   SampledWarning,
   LoadingState,
   EmbeddingScatterChart,
+  ColorByDropdown,
+  MetadataColorLegend,
   MAX_POINTS,
 } from './embedding-plot';
-import type { EmbeddingData, EmbeddingPlotProps, PlotPoint } from './embedding-plot';
+import type { EmbeddingData, EmbeddingPlotProps, PlotPoint, ColorMapping } from './embedding-plot';
 
 // Re-export types for external use
 export type { EmbeddingData, EmbeddingPlotProps };
+
+// Color palette for metadata coloring
+const METADATA_COLORS = [
+  '#3b82f6', // blue
+  '#ef4444', // red
+  '#22c55e', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#f97316', // orange
+  '#84cc16', // lime
+  '#6366f1', // indigo
+];
 
 /**
  * EmbeddingPlot component - Interactive 2D visualization of embeddings
@@ -24,11 +40,20 @@ export type { EmbeddingData, EmbeddingPlotProps };
  * - PCA dimensionality reduction for high-dimensional embeddings
  * - Interactive scatter plot with hover tooltips
  * - Click to view document details
+ * - Multi-selection for comparing documents (max 2)
  * - Similarity highlighting (color by distance to selected point)
+ * - Color by metadata field
+ * - Context menu for point actions
  * - Zoom and reset controls
  * - Responsive design
  */
-export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: EmbeddingPlotProps) {
+export function EmbeddingPlot({
+  embeddings,
+  selectedIds = [],
+  colorByField = null,
+  onPointClick,
+  onPointContextMenu,
+}: EmbeddingPlotProps) {
   const [isReducing, setIsReducing] = useState(false);
   const [reducedData, setReducedData] = useState<PlotPoint[] | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -37,11 +62,15 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
   const [progress, setProgress] = useState(0);
   const [isSampled, setIsSampled] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [localColorByField, setLocalColorByField] = useState<string | null>(colorByField);
   const plotRef = useRef<HTMLDivElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const panStartRef = useRef<{ x: number; y: number } | null>(null);
   const zoomDomainRef = useRef(zoomDomain);
   const rafIdRef = useRef<number | null>(null);
+
+  // Use external or local colorByField
+  const activeColorByField = colorByField ?? localColorByField;
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -60,14 +89,47 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     };
   }, []);
 
+  // Extract unique metadata keys from embeddings
+  const metadataKeys = useMemo(() => {
+    const keysSet = new Set<string>();
+    embeddings.forEach((e) => {
+      if (e.metadata) {
+        Object.keys(e.metadata).forEach((key) => keysSet.add(key));
+      }
+    });
+    return Array.from(keysSet).sort();
+  }, [embeddings]);
+
+  // Create color mapping for metadata field
+  const colorMapping = useMemo((): ColorMapping | null => {
+    if (!activeColorByField) return null;
+
+    const valueColors = new Map<string, string>();
+    const uniqueValues = new Set<string>();
+
+    embeddings.forEach((e) => {
+      const value = e.metadata?.[activeColorByField];
+      if (value !== undefined && value !== null) {
+        uniqueValues.add(String(value));
+      }
+    });
+
+    const sortedValues = Array.from(uniqueValues).sort();
+    sortedValues.forEach((value, idx) => {
+      valueColors.set(value, METADATA_COLORS[idx % METADATA_COLORS.length]!);
+    });
+
+    return { field: activeColorByField, valueColors };
+  }, [embeddings, activeColorByField]);
+
   // Check if embeddings need reduction
   const needsReduction = embeddings.length > 0 && embeddings[0] != null && embeddings[0].vector.length > 2;
 
-  // Selected embedding data
+  // First selected embedding (for distance calculation)
   const selectedEmbedding = useMemo(() => {
-    if (!selectedId) return null;
-    return embeddings.find(e => e.id === selectedId);
-  }, [embeddings, selectedId]);
+    if (!selectedIds || selectedIds.length === 0) return null;
+    return embeddings.find((e) => e.id === selectedIds[0]);
+  }, [embeddings, selectedIds]);
 
   // Sample embeddings if there are too many
   const sampledEmbeddings = useMemo(() => {
@@ -88,43 +150,46 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
   }, [embeddings]);
 
   // Create plot data from reduced points
-  const createPlotData = useCallback((points2D: { x: number; y: number }[]): PlotPoint[] => {
-    return sampledEmbeddings.map((embedding, index) => {
-      const point = points2D[index];
-      if (!point) {
+  const createPlotData = useCallback(
+    (points2D: { x: number; y: number }[]): PlotPoint[] => {
+      return sampledEmbeddings.map((embedding, index) => {
+        const point = points2D[index];
+        if (!point) {
+          return {
+            x: 0,
+            y: 0,
+            id: embedding.id,
+            document: embedding.document,
+            metadata: embedding.metadata,
+          };
+        }
+
+        let distance: number | undefined;
+        let similarity: number | undefined;
+
+        if (selectedEmbedding) {
+          distance = euclideanDistance(embedding.vector, selectedEmbedding.vector);
+          similarity = cosineSimilarity(embedding.vector, selectedEmbedding.vector);
+        }
+
         return {
-          x: 0,
-          y: 0,
+          x: point.x,
+          y: point.y,
           id: embedding.id,
           document: embedding.document,
           metadata: embedding.metadata,
+          distance,
+          similarity,
         };
-      }
-
-      let distance: number | undefined;
-      let similarity: number | undefined;
-
-      if (selectedEmbedding) {
-        distance = euclideanDistance(embedding.vector, selectedEmbedding.vector);
-        similarity = cosineSimilarity(embedding.vector, selectedEmbedding.vector);
-      }
-
-      return {
-        x: point.x,
-        y: point.y,
-        id: embedding.id,
-        document: embedding.document,
-        metadata: embedding.metadata,
-        distance,
-        similarity,
-      };
-    });
-  }, [sampledEmbeddings, selectedEmbedding]);
+      });
+    },
+    [sampledEmbeddings, selectedEmbedding]
+  );
 
   // Fallback to main thread computation
   const fallbackReduce = useCallback(() => {
     try {
-      const vectors = sampledEmbeddings.map(e => e.vector);
+      const vectors = sampledEmbeddings.map((e) => e.vector);
       const points2D = reduceTo2D(vectors);
       setReducedData(createPlotData(points2D));
     } catch (error) {
@@ -170,7 +235,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     };
 
     // Start computation
-    const vectors = sampledEmbeddings.map(e => e.vector);
+    const vectors = sampledEmbeddings.map((e) => e.vector);
     worker.postMessage({ type: 'compute', embeddings: vectors });
   }, [embeddings.length, sampledEmbeddings, createPlotData, fallbackReduce]);
 
@@ -178,7 +243,7 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
   useMemo(() => {
     if (!needsReduction && sampledEmbeddings.length > 0) {
       setIsSampled(embeddings.length > MAX_POINTS);
-      const vectors = sampledEmbeddings.map(e => e.vector);
+      const vectors = sampledEmbeddings.map((e) => e.vector);
       const points2D = reduceTo2D(vectors);
       setReducedData(createPlotData(points2D));
     }
@@ -211,14 +276,9 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
 
     const csvRows = [
       ['id', 'x', 'y', 'document_preview'].join(','),
-      ...reducedData.map(point => {
+      ...reducedData.map((point) => {
         const docPreview = point.document.substring(0, 50).replace(/"/g, '""').replace(/\n/g, ' ');
-        return [
-          `"${point.id}"`,
-          point.x.toFixed(6),
-          point.y.toFixed(6),
-          `"${docPreview}"`,
-        ].join(',');
+        return [`"${point.id}"`, point.x.toFixed(6), point.y.toFixed(6), `"${docPreview}"`].join(',');
       }),
     ];
 
@@ -240,10 +300,12 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
       document: embedding.document,
       metadata: embedding.metadata,
       vector: embedding.vector,
-      coordinates2D: reducedData?.[index] ? {
-        x: reducedData[index].x,
-        y: reducedData[index].y,
-      } : null,
+      coordinates2D: reducedData?.[index]
+        ? {
+            x: reducedData[index].x,
+            y: reducedData[index].y,
+          }
+        : null,
     }));
 
     const jsonContent = JSON.stringify(exportData, null, 2);
@@ -258,26 +320,54 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
     URL.revokeObjectURL(url);
   }, [embeddings, reducedData]);
 
-  // Get color for point based on selection and distance
-  const getPointColor = useCallback((point: PlotPoint) => {
-    if (point.id === selectedId) return '#ef4444'; // red - selected
-    if (point.id === hoveredId) return '#f97316'; // orange - hovered
+  // Get color for point based on selection, distance, and metadata
+  const getPointColor = useCallback(
+    (point: PlotPoint) => {
+      // Multi-selection colors take priority
+      if (selectedIds && selectedIds[0] === point.id) return '#3b82f6'; // blue - doc 1
+      if (selectedIds && selectedIds[1] === point.id) return '#22c55e'; // green - doc 2
+      if (point.id === hoveredId) return '#f97316'; // orange - hovered
 
-    if (selectedId && point.distance !== undefined) {
-      if (point.distance < 0.2) return '#22c55e'; // green - very similar
-      if (point.distance < 0.5) return '#eab308'; // yellow - similar
-      return '#3b82f6'; // blue - different
-    }
+      // Color by metadata field if set
+      if (colorMapping && point.metadata) {
+        const value = point.metadata[colorMapping.field];
+        if (value !== undefined && value !== null) {
+          const color = colorMapping.valueColors.get(String(value));
+          if (color) return color;
+        }
+      }
 
-    return '#3b82f6'; // blue - default
-  }, [selectedId, hoveredId]);
+      // Default: color by distance to selected point
+      if (selectedIds && selectedIds.length > 0 && point.distance !== undefined) {
+        if (point.distance < 0.2) return '#22c55e'; // green - very similar
+        if (point.distance < 0.5) return '#eab308'; // yellow - similar
+        return '#94a3b8'; // slate - different
+      }
+
+      return '#94a3b8'; // slate - default
+    },
+    [selectedIds, hoveredId, colorMapping]
+  );
 
   // Get point radius based on selection
-  const getPointRadius = useCallback((point: PlotPoint) => {
-    if (point.id === selectedId) return 9;
-    if (point.id === hoveredId) return 7;
-    return 5;
-  }, [selectedId, hoveredId]);
+  const getPointRadius = useCallback(
+    (point: PlotPoint) => {
+      if (selectedIds && selectedIds.includes(point.id)) return 10;
+      if (point.id === hoveredId) return 8;
+      return 5;
+    },
+    [selectedIds, hoveredId]
+  );
+
+  // Get point stroke for selected items
+  const getPointStroke = useCallback(
+    (point: PlotPoint) => {
+      if (selectedIds && selectedIds[0] === point.id) return { stroke: '#1d4ed8', strokeWidth: 2 };
+      if (selectedIds && selectedIds[1] === point.id) return { stroke: '#15803d', strokeWidth: 2 };
+      return { stroke: 'none', strokeWidth: 0 };
+    },
+    [selectedIds]
+  );
 
   // Compute data bounds for zoom
   const dataBounds = useMemo(() => {
@@ -285,8 +375,8 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
       return { x: [-1, 1] as [number, number], y: [-1, 1] as [number, number] };
     }
 
-    const xValues = reducedData.map(p => p.x);
-    const yValues = reducedData.map(p => p.y);
+    const xValues = reducedData.map((p) => p.x);
+    const yValues = reducedData.map((p) => p.y);
 
     const xMin = Math.min(...xValues);
     const xMax = Math.max(...xValues);
@@ -407,14 +497,23 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Embedding Visualization</CardTitle>
-            <CardDescription>
-              {embeddings.length} documents | {embeddings[0]?.vector.length || 0} dimensions
-            </CardDescription>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div>
+              <CardTitle className="text-base">2D Embedding Plot</CardTitle>
+              <CardDescription className="text-xs">
+                {embeddings.length} documents | {embeddings[0]?.vector.length || 0} dims
+              </CardDescription>
+            </div>
+            {reducedData && metadataKeys.length > 0 && (
+              <ColorByDropdown
+                metadataKeys={metadataKeys}
+                value={activeColorByField}
+                onChange={setLocalColorByField}
+              />
+            )}
           </div>
 
           <PlotControls
@@ -431,9 +530,13 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
             onExportJson={handleExportJson}
           />
         </div>
-        {selectedId && reducedData && <ColorLegend />}
+        {colorMapping ? (
+          <MetadataColorLegend field={colorMapping.field} valueColors={colorMapping.valueColors} />
+        ) : (
+          selectedIds && selectedIds.length > 0 && reducedData && <ColorLegend />
+        )}
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 pt-0">
         {isSampled && reducedData && <SampledWarning totalCount={embeddings.length} />}
 
         {isReducing ? (
@@ -441,25 +544,25 @@ export function EmbeddingPlot({ embeddings, selectedId, onPointClick }: Embeddin
         ) : reducedData ? (
           <EmbeddingScatterChart
             data={reducedData}
-            selectedId={selectedId}
+            selectedIds={selectedIds}
             zoomDomain={zoomDomain}
             dataBounds={dataBounds}
             isPanning={isPanning}
             plotRef={plotRef}
             onPointClick={onPointClick}
+            onPointContextMenu={onPointContextMenu}
             onHover={setHoveredId}
             onPanStart={handlePanStart}
             onPanMove={handlePanMove}
             onPanEnd={handlePanEnd}
             getPointColor={getPointColor}
             getPointRadius={getPointRadius}
+            getPointStroke={getPointStroke}
           />
         ) : (
           <div className="flex h-96 items-center justify-center">
             <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Click "Reduce to 2D" to visualize embeddings
-              </p>
+              <p className="text-sm text-muted-foreground">Click "Reduce to 2D" to visualize embeddings</p>
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,6 +11,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { vectorMagnitude } from '@/lib/pca';
 
 export interface EmbeddingData {
@@ -21,6 +23,7 @@ export interface EmbeddingData {
 
 interface EmbeddingStatsProps {
   embeddings: EmbeddingData[];
+  onDimensionClick?: (dimension: number) => void;
 }
 
 interface DimensionStats {
@@ -49,7 +52,9 @@ interface MagnitudeHistogramBin {
  * - Vector magnitude distribution (histogram)
  * - Dimension variance heatmap
  */
-export function EmbeddingStats({ embeddings }: EmbeddingStatsProps) {
+export function EmbeddingStats({ embeddings, onDimensionClick }: EmbeddingStatsProps) {
+  const [showAllDimensions, setShowAllDimensions] = useState(false);
+
   // Compute all statistics
   const stats = useMemo(() => {
     if (embeddings.length === 0 || !embeddings[0]?.vector) {
@@ -232,7 +237,8 @@ export function EmbeddingStats({ embeddings }: EmbeddingStatsProps) {
         <CardHeader>
           <CardTitle className="text-base">Top Variance Dimensions</CardTitle>
           <CardDescription>
-            Dimensions with the highest variance (most discriminative features)
+            Dimensions with the highest variance (most discriminative features).
+            {onDimensionClick && ' Click a bar to see outlier documents.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -241,7 +247,11 @@ export function EmbeddingStats({ embeddings }: EmbeddingStatsProps) {
               {stats.topVarianceDimensions.map((dim) => {
                 const { width, color } = formatVariance(dim.variance);
                 return (
-                  <div key={dim.dimension} className="space-y-1">
+                  <div
+                    key={dim.dimension}
+                    className={`space-y-1 p-2 rounded transition-colors ${onDimensionClick ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                    onClick={() => onDimensionClick?.(dim.dimension)}
+                  >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-mono">Dim {dim.dimension}</span>
                       <div className="flex items-center gap-2">
@@ -255,7 +265,7 @@ export function EmbeddingStats({ embeddings }: EmbeddingStatsProps) {
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full ${color}`}
+                        className={`h-2 rounded-full ${color} transition-all`}
                         style={{ width }}
                       />
                     </div>
@@ -271,43 +281,60 @@ export function EmbeddingStats({ embeddings }: EmbeddingStatsProps) {
         </CardContent>
       </Card>
 
-      {/* Full Dimension Statistics Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All Dimension Statistics</CardTitle>
-          <CardDescription>
-            Detailed statistics for all {stats.dimensions} dimensions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-64">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-background">
-                <tr className="border-b">
-                  <th className="text-left p-2 font-medium">Dim</th>
-                  <th className="text-right p-2 font-medium">Min</th>
-                  <th className="text-right p-2 font-medium">Max</th>
-                  <th className="text-right p-2 font-medium">Mean</th>
-                  <th className="text-right p-2 font-medium">Std Dev</th>
-                  <th className="text-right p-2 font-medium">Variance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.dimensionStats.map((dim) => (
-                  <tr key={dim.dimension} className="border-b hover:bg-muted/50">
-                    <td className="p-2 font-mono">{dim.dimension}</td>
-                    <td className="p-2 text-right font-mono">{dim.min.toFixed(6)}</td>
-                    <td className="p-2 text-right font-mono">{dim.max.toFixed(6)}</td>
-                    <td className="p-2 text-right font-mono">{dim.mean.toFixed(6)}</td>
-                    <td className="p-2 text-right font-mono">{dim.stdDev.toFixed(6)}</td>
-                    <td className="p-2 text-right font-mono">{dim.variance.toFixed(6)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+      {/* Full Dimension Statistics Table - Collapsible */}
+      <Collapsible open={showAllDimensions} onOpenChange={setShowAllDimensions}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>All Dimension Statistics</span>
+                {showAllDimensions ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </CardTitle>
+              <CardDescription>
+                Detailed statistics for all {stats.dimensions} dimensions
+              </CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              <ScrollArea className="h-64">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="border-b">
+                      <th className="text-left p-2 font-medium">Dim</th>
+                      <th className="text-right p-2 font-medium">Min</th>
+                      <th className="text-right p-2 font-medium">Max</th>
+                      <th className="text-right p-2 font-medium">Mean</th>
+                      <th className="text-right p-2 font-medium">Std Dev</th>
+                      <th className="text-right p-2 font-medium">Variance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.dimensionStats.map((dim) => (
+                      <tr
+                        key={dim.dimension}
+                        className={`border-b hover:bg-muted/50 ${onDimensionClick ? 'cursor-pointer' : ''}`}
+                        onClick={() => onDimensionClick?.(dim.dimension)}
+                      >
+                        <td className="p-2 font-mono">{dim.dimension}</td>
+                        <td className="p-2 text-right font-mono">{dim.min.toFixed(6)}</td>
+                        <td className="p-2 text-right font-mono">{dim.max.toFixed(6)}</td>
+                        <td className="p-2 text-right font-mono">{dim.mean.toFixed(6)}</td>
+                        <td className="p-2 text-right font-mono">{dim.stdDev.toFixed(6)}</td>
+                        <td className="p-2 text-right font-mono">{dim.variance.toFixed(6)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }
