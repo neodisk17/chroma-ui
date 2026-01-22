@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { ConnectionStatus } from '../connections/ConnectionStatus';
+import { ContextBar } from './ContextBar';
 
 // Map routes to titles
 const routeTitles: Record<string, string> = {
@@ -8,7 +8,12 @@ const routeTitles: Record<string, string> = {
   '/query': 'Query Builder',
 };
 
-function Header() {
+interface HeaderProps {
+  onNewConnection: () => void;
+  onNewCollection: () => void;
+}
+
+function Header({ onNewConnection, onNewCollection }: HeaderProps) {
   const location = useLocation();
 
   // Get the current page title based on the route
@@ -34,15 +39,18 @@ function Header() {
             <h2 className="text-2xl font-semibold">{getPageTitle()}</h2>
           </div>
 
-          {/* Right side - Connection Status */}
+          {/* Right side - Additional header items can be added here */}
           <div className="flex items-center gap-4">
             {/* Additional header items can be added here */}
           </div>
         </div>
       </div>
 
-      {/* Connection Status Bar */}
-      <ConnectionStatus />
+      {/* Context Bar - replaces ConnectionStatus */}
+      <ContextBar
+        onNewConnection={onNewConnection}
+        onNewCollection={onNewCollection}
+      />
     </header>
   );
 }

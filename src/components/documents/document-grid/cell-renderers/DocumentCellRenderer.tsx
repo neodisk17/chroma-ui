@@ -2,7 +2,7 @@ import type { DocumentCellRendererParams } from './types';
 
 export const DocumentCellRenderer = (params: DocumentCellRendererParams) => {
   const text = params.value || '';
-  const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+  const preview = text.length > 200 ? text.substring(0, 200) + '...' : text;
 
   return (
     <div className="flex h-full items-center" title={text}>

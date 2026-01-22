@@ -62,15 +62,17 @@ function CollectionsPage() {
 
   return (
     <div className="flex h-full">
-      {/* Sidebar: Collection List */}
-      <div className="w-80 flex-shrink-0">
-        <CollectionList
-          selectedCollection={highlightedCollection}
-          onCreateCollection={handleCreateCollection}
-          onEditCollection={handleEditCollection}
-          onViewMetadata={handleViewMetadata}
-        />
-      </div>
+      {/* Sidebar: Collection List - Only show when no collection is selected */}
+      {!collectionId && (
+        <div className="w-80 flex-shrink-0">
+          <CollectionList
+            selectedCollection={highlightedCollection}
+            onCreateCollection={handleCreateCollection}
+            onEditCollection={handleEditCollection}
+            onViewMetadata={handleViewMetadata}
+          />
+        </div>
+      )}
 
       {/* Main Content: Outlet for nested routes */}
       <div className="flex-1 flex flex-col overflow-hidden">
