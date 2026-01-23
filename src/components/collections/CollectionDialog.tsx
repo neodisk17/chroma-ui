@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -56,7 +56,6 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     formState: { errors, isValid },
     reset,
     setValue,
-    watch,
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: 'onChange',
@@ -68,14 +67,13 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     },
   });
 
-  // Watch metadata field for validation
-  const metadataValue = watch('metadata');
+  // Register metadata with custom onChange for JSON validation
+  const { onChange: metadataOnChange, ...metadataRest } = register('metadata');
 
-  // Validate JSON metadata
-  useEffect(() => {
-    if (metadataValue) {
+  const validateMetadata = (value: string) => {
+    if (value) {
       try {
-        JSON.parse(metadataValue);
+        JSON.parse(value);
         setMetadataError(null);
       } catch (error) {
         setMetadataError(error instanceof Error ? error.message : 'Invalid JSON');
@@ -83,7 +81,12 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     } else {
       setMetadataError(null);
     }
-  }, [metadataValue]);
+  };
+
+  const handleMetadataChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    metadataOnChange(e);
+    validateMetadata(e.target.value);
+  };
 
   // Mutations
   const createCollection = useCreateCollection();
@@ -233,7 +236,8 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
             <Label htmlFor="metadata">Metadata (JSON)</Label>
             <Textarea
               id="metadata"
-              {...register('metadata')}
+              {...metadataRest}
+              onChange={handleMetadataChange}
               placeholder="{}"
               rows={6}
               className={`font-mono text-xs ${metadataError ? 'border-destructive' : ''}`}
