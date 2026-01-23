@@ -15,6 +15,10 @@
     "build:docker:linux": "docker compose run --rm electron-builder-linux",
     "build:docker:all": "docker compose up electron-builder-win electron-builder-linux",
     "start": "cross-env NODE_ENV=production electron .",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:run": "vitest run",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -78,7 +82,11 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tanstack/react-query-devtools": "^5.91.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20.10.6",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.2.46",
@@ -87,6 +95,8 @@
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-istanbul": "^4.0.18",
+    "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.16",
     "cross-env": "^10.1.0",
     "electron": "^40.0.0",
@@ -94,6 +104,9 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "happy-dom": "^20.3.7",
+    "jsdom": "^27.0.1",
+    "playwright": "^1.57.0",
     "png2icons": "^2.0.1",
     "postcss": "^8.4.33",
     "prettier": "^3.1.1",
@@ -103,6 +116,7 @@
     "typescript": "^5.3.3",
     "vite": "^6.4.1",
     "vite-plugin-electron": "^0.28.2",
-    "vite-plugin-electron-renderer": "^0.14.5"
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "vitest": "^4.0.18"
   }
 }

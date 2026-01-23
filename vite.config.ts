@@ -11,7 +11,6 @@ const electronExternals = [
   'electron',
   'electron-updater',
   'electron-log',
-  'electron-store',
   'keytar',
   'chromadb',
 ];
