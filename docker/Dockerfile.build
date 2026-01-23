@@ -1,0 +1,19 @@
+FROM electronuserland/builder:wine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm ci --include=dev
+
+# Copy the rest of the project
+COPY . .
+
+# Build the app (compile TypeScript and Vite bundle)
+RUN npm run build
+
+# Default command (override in docker-compose for platform-specific builds)
+CMD ["echo", "Use docker-compose to run platform-specific builds"]

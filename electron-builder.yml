@@ -1,0 +1,122 @@
+appId: com.chromadb.ui
+productName: ChromaDB UI
+copyright: Copyright © 2024
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - "!**/.git/*"
+  - "!**/.vscode/*"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!**/node_modules/.bin"
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!.editorconfig"
+  - "!**/._*"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{appveyor.yml,.travis.yml,circle.yml}"
+  - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+
+# Externalized native modules that need rebuilding per platform
+extraMetadata:
+  main: dist-electron/main.js
+
+# Auto-updater configuration for private GitHub repo
+publish:
+  - provider: github
+    owner: ${env.GH_OWNER}
+    repo: chromadb-ui
+    private: true
+    releaseType: release
+    token: ${env.GH_TOKEN}
+
+# macOS Configuration
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 410
+      y: 150
+      type: link
+      path: /Applications
+    - x: 130
+      y: 150
+      type: file
+
+# Windows Configuration
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  artifactName: "${productName}-${version}-Setup.${ext}"
+  deleteAppDataOnUninstall: false
+
+# Linux Configuration
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  icon: build
+  category: Development
+  maintainer: chromadb-ui
+  synopsis: Desktop UI for ChromaDB
+  description: A desktop application for managing and querying ChromaDB vector databases
+
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+
+appImage:
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+
+# Native module rebuild
+nodeGypRebuild: false
+npmRebuild: true
+
+# asar archive for faster loading
+asar: true
+asarUnpack:
+  - "**/*.node"
+  - "**/node_modules/keytar/**"

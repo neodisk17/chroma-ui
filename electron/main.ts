@@ -7,6 +7,7 @@ import type { IPCResponse, PongResponse } from '../shared/types';
 import { registerConnectionHandlers } from './ipc/connection-handler';
 import { registerChromaDBHandlers } from './ipc/chromadb-handler';
 import { connectionManager } from './services/connection-manager';
+import { autoUpdaterService } from './services/auto-updater';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -136,6 +137,19 @@ app.whenReady().then(() => {
 
   // Create the main window
   createWindow();
+
+  // Initialize auto-updater in production mode
+  if (!isDev && mainWindow) {
+    autoUpdaterService.initialize(mainWindow);
+    // Set token from environment if available
+    if (process.env.GH_TOKEN) {
+      autoUpdaterService.setGitHubToken(process.env.GH_TOKEN);
+    }
+    // Check for updates after a short delay
+    setTimeout(() => {
+      autoUpdaterService.checkForUpdates();
+    }, 3000);
+  }
 
   // macOS: Re-create window when dock icon is clicked and no windows are open
   app.on('activate', () => {

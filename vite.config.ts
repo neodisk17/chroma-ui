@@ -4,6 +4,18 @@ import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
 import path from 'path';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Native/Node modules that should not be bundled
+const electronExternals = [
+  'electron',
+  'electron-updater',
+  'electron-log',
+  'electron-store',
+  'keytar',
+  'chromadb',
+];
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -15,9 +27,10 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
-            minify: false,
+            minify: isProduction ? 'esbuild' : false,
+            sourcemap: !isProduction,
             rollupOptions: {
-              external: ['electron', 'keytar', 'chromadb'],
+              external: electronExternals,
               output: {
                 format: 'cjs'
               }
@@ -29,13 +42,13 @@ export default defineConfig({
         // Preload script
         entry: 'electron/preload.ts',
         onstart(options) {
-          // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete
           options.reload();
         },
         vite: {
           build: {
             outDir: 'dist-electron',
-            minify: false,
+            minify: isProduction ? 'esbuild' : false,
+            sourcemap: !isProduction,
             rollupOptions: {
               external: ['electron'],
               output: {
@@ -53,6 +66,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, './shared')
     }
+  },
+  build: {
+    sourcemap: !isProduction,
+    minify: isProduction ? 'esbuild' : false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-popover'],
+          'vendor-data': ['@tanstack/react-query', 'zustand', 'zod'],
+          'vendor-grid': ['ag-grid-community', 'ag-grid-react'],
+          'vendor-charts': ['recharts'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 3000

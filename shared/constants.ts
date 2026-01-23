@@ -31,6 +31,12 @@ export const IPC_CHANNELS = {
   DOCUMENT_BULK_IMPORT: 'document:bulk-import',
 
   QUERY_EXECUTE: 'query:execute',
+
+  // Auto-updater channels
+  UPDATE_CHECK: 'updater:check',
+  UPDATE_DOWNLOAD: 'updater:download',
+  UPDATE_INSTALL: 'updater:install',
+  UPDATE_SET_TOKEN: 'updater:set-token',
 } as const;
 
 // Window dimensions

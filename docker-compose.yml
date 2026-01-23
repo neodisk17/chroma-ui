@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  # Build Windows installers (NSIS + portable) using Wine
+  electron-builder-win:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.build
+    command: npx electron-builder --win --publish never
+    volumes:
+      - ./release:/app/release
+    environment:
+      - GH_TOKEN=${GH_TOKEN:-}
+      - GH_OWNER=${GH_OWNER:-}
+      - NODE_ENV=production
+
+  # Build Linux packages (AppImage + deb)
+  electron-builder-linux:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.build
+    command: npx electron-builder --linux --publish never
+    volumes:
+      - ./release:/app/release
+    environment:
+      - GH_TOKEN=${GH_TOKEN:-}
+      - GH_OWNER=${GH_OWNER:-}
+      - NODE_ENV=production
+
+  # Build and publish all platforms (Windows + Linux) to GitHub releases
+  electron-builder-publish:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.build
+    command: npx electron-builder --win --linux --publish always
+    volumes:
+      - ./release:/app/release
+    environment:
+      - GH_TOKEN=${GH_TOKEN}
+      - GH_OWNER=${GH_OWNER}
+      - NODE_ENV=production
