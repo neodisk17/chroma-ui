@@ -6,7 +6,7 @@ export const ActionsCellRenderer = (params: ActionsCellRendererParams) => {
   const { onView, onEdit, onDelete } = params;
 
   return (
-    <div className="flex h-full items-center gap-1">
+    <div className="flex h-full items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 hover:opacity-100 [.ag-row:hover_&]:opacity-100 [.ag-row-selected_&]:opacity-100">
       <Button
         variant="ghost"
         size="icon"

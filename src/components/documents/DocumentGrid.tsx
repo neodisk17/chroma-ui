@@ -23,6 +23,7 @@ import {
   MetadataCellRenderer,
   ActionsCellRenderer,
 } from './document-grid';
+import { useUIPreferencesStore } from '../../stores/ui-preferences-store';
 import type { Document } from '../../../shared/schemas';
 
 interface DocumentGridProps {
@@ -57,6 +58,9 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   // Grid state
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
+  // Get UI preferences
+  const { searchQuery, searchField, documentGridLayout } = useUIPreferencesStore();
+
   // Fetch documents with pagination
   const { data, isLoading, error, refetch } = useDocuments(collectionName, {
     limit: pageSize,
@@ -65,6 +69,9 @@ export const DocumentGrid = React.memo(function DocumentGrid({
 
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
   const totalDocuments = data?.total || 0;
+
+  // Row height based on layout mode
+  const rowHeight = documentGridLayout === 'compact' ? 36 : 48;
 
   // Reset to page 0 when collection changes
   useEffect(() => {
@@ -132,16 +139,40 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     ];
   }, [handleView, handleEdit, handleDelete]);
 
-  // Convert data to row format
+  // Convert data to row format with search filtering
   const rowData = useMemo(() => {
     if (!data) return [];
 
-    return data.ids.map((id, index) => ({
+    const allRows = data.ids.map((id, index) => ({
       id,
       document: data.documents[index],
       metadata: data.metadatas[index],
     }));
-  }, [data]);
+
+    // Apply search filter if query exists
+    if (!searchQuery.trim()) {
+      return allRows;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return allRows.filter((row) => {
+      switch (searchField) {
+        case 'id':
+          return row.id.toLowerCase().includes(query);
+        case 'document':
+          return (row.document || '').toLowerCase().includes(query);
+        case 'metadata':
+          return JSON.stringify(row.metadata || {}).toLowerCase().includes(query);
+        case 'all':
+        default:
+          return (
+            row.id.toLowerCase().includes(query) ||
+            (row.document || '').toLowerCase().includes(query) ||
+            JSON.stringify(row.metadata || {}).toLowerCase().includes(query)
+          );
+      }
+    });
+  }, [data, searchQuery, searchField]);
 
   // Grid ready callback
   const onGridReady = useCallback((params: GridReadyEvent) => {
@@ -271,8 +302,8 @@ export const DocumentGrid = React.memo(function DocumentGrid({
           rowSelection="multiple"
           suppressRowClickSelection
           animateRows
-          rowHeight={48}
-          headerHeight={40}
+          rowHeight={rowHeight}
+          headerHeight={documentGridLayout === 'compact' ? 36 : 40}
           domLayout="normal"
           className="h-full w-full"
         />

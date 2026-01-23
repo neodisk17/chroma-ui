@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlayCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { PlayCircle, XCircle, ChevronDown, ChevronUp, Search, Filter, FileText } from 'lucide-react';
 import { useQueryStore } from '@/stores/query-store';
-import { SimilaritySearch } from './SimilaritySearch';
-import { FilterBuilder } from './FilterBuilder';
-import { DocumentFilterBuilder } from './DocumentFilterBuilder';
+import { SimilaritySearchSection } from './SimilaritySearchSection';
+import { MetadataFilterSection } from './MetadataFilterSection';
+import { DocumentFilterSection } from './DocumentFilterSection';
 import { QueryResults } from './QueryResults';
 import { QueryTemplates } from './QueryTemplates';
 import { useExecuteQuery } from '@/hooks/use-chromadb';
@@ -29,7 +33,15 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
   } = useQueryStore();
 
   const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const [similarityOpen, setSimilarityOpen] = useState(true);
+  const [metadataOpen, setMetadataOpen] = useState(true);
+  const [documentOpen, setDocumentOpen] = useState(true);
   const executeQuery = useExecuteQuery();
+
+  // Count active filters
+  const activeMetadataFilters = metadataFilters.filter(f => f.field && f.value).length;
+  const activeDocumentFilters = documentFilters.filter(f => f.value).length;
+  const hasSimilarityQuery = !!queryText.trim();
 
   // Generate query preview JSON
   const generateQueryPreview = (): ChromaDBQueryObject => {
@@ -92,6 +104,7 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
   };
 
   const isQueryEmpty = !queryText && metadataFilters.length === 0 && documentFilters.length === 0;
+  const totalActiveFilters = (hasSimilarityQuery ? 1 : 0) + activeMetadataFilters + activeDocumentFilters;
 
   return (
     <div className="flex flex-col h-full">
@@ -105,90 +118,169 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
                 {collectionName}
               </Badge>
             )}
+            {totalActiveFilters > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {totalActiveFilters} active {totalActiveFilters === 1 ? 'filter' : 'filters'}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <QueryTemplates />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content - Side by Side Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Filters */}
+        <div className="w-[380px] border-r flex flex-col">
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-3">
+              {/* Similarity Search Section */}
+              <Collapsible open={similarityOpen} onOpenChange={setSimilarityOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-auto py-3 px-4 hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Search className="h-4 w-4" />
+                      <span className="font-medium">Similarity Search</span>
+                      {hasSimilarityQuery && (
+                        <Badge variant="default" className="h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          1
+                        </Badge>
+                      )}
+                    </div>
+                    {similarityOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pt-2 pb-4">
+                    <SimilaritySearchSection />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Metadata Filters Section */}
+              <Collapsible open={metadataOpen} onOpenChange={setMetadataOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-auto py-3 px-4 hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      <span className="font-medium">Metadata Filters</span>
+                      {activeMetadataFilters > 0 && (
+                        <Badge variant="default" className="h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          {activeMetadataFilters}
+                        </Badge>
+                      )}
+                    </div>
+                    {metadataOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pt-2 pb-4">
+                    <MetadataFilterSection collectionName={collectionName} />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Document Filters Section */}
+              <Collapsible open={documentOpen} onOpenChange={setDocumentOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between h-auto py-3 px-4 hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="font-medium">Document Filters</span>
+                      {activeDocumentFilters > 0 && (
+                        <Badge variant="default" className="h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                          {activeDocumentFilters}
+                        </Badge>
+                      )}
+                    </div>
+                    {documentOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pt-2 pb-4">
+                    <DocumentFilterSection />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Query JSON Preview */}
+              <Collapsible open={showJsonPreview} onOpenChange={setShowJsonPreview}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-between text-muted-foreground"
+                  >
+                    <span className="text-xs">Query Preview (JSON)</span>
+                    {showJsonPreview ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <pre className="rounded-md bg-slate-950 p-4 text-xs text-slate-50 overflow-x-auto mt-2">
+                    {JSON.stringify(generateQueryPreview(), null, 2)}
+                  </pre>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </ScrollArea>
+
+          {/* Unified Action Bar */}
+          <div className="border-t bg-background p-4 space-y-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={clearQuery}
-              disabled={isExecuting || isQueryEmpty}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Clear Query
-            </Button>
-            <Button
-              size="sm"
+              className="w-full"
               onClick={handleExecute}
               disabled={isExecuting || !collectionName || isQueryEmpty}
             >
               <PlayCircle className="mr-2 h-4 w-4" />
               {isExecuting ? 'Executing...' : 'Execute Query'}
             </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={clearQuery}
+              disabled={isExecuting || isQueryEmpty}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Clear All Filters
+            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        <Tabs defaultValue="similarity" className="h-full flex flex-col">
-          <div className="border-b px-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="similarity">Similarity Search</TabsTrigger>
-              <TabsTrigger value="metadata">Metadata Filters</TabsTrigger>
-              <TabsTrigger value="document">Document Filters</TabsTrigger>
-              <TabsTrigger value="results">Results</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="p-4">
-                <TabsContent value="similarity" className="mt-0">
-                  <SimilaritySearch />
-                </TabsContent>
-
-                <TabsContent value="metadata" className="mt-0">
-                  <FilterBuilder />
-                </TabsContent>
-
-                <TabsContent value="document" className="mt-0">
-                  <DocumentFilterBuilder />
-                </TabsContent>
-
-                <TabsContent value="results" className="mt-0">
-                  <QueryResults collectionName={collectionName} />
-                </TabsContent>
-              </div>
-            </ScrollArea>
-          </div>
-        </Tabs>
-      </div>
-
-      {/* Footer - Query JSON Preview */}
-      <div className="border-t bg-muted/30">
-        <div className="p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowJsonPreview(!showJsonPreview)}
-            className="w-full justify-between"
-          >
-            <span className="text-xs font-medium">Query Preview (JSON)</span>
-            {showJsonPreview ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </Button>
+        {/* Right Panel - Results */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1">
+            <div className="p-4">
+              <QueryResults collectionName={collectionName} />
+            </div>
+          </ScrollArea>
         </div>
-        {showJsonPreview && (
-          <div className="px-4 pb-4">
-            <pre className="rounded-md bg-slate-950 p-4 text-xs text-slate-50 overflow-x-auto">
-              {JSON.stringify(generateQueryPreview(), null, 2)}
-            </pre>
-          </div>
-        )}
       </div>
 
       {/* Error Display */}
