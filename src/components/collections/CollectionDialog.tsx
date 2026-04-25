@@ -74,7 +74,7 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
   const originalModelRef = useRef<string>('');
 
   // Get embedding config from store
-  const { buildEmbeddingConfig, resetToDefaults, selectedProvider, hasOpenAIKey, localConfig } =
+  const { buildEmbeddingConfig, resetToDefaults, selectedProvider, hasOpenAIKey } =
     useEmbeddingStore();
 
   // Model warmup and download progress
@@ -152,10 +152,10 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
         resetToDefaults();
         setIsApiKeyOpen(false);
         // Capture the original model at dialog open time (after resetToDefaults)
-        originalModelRef.current = localConfig.model;
+        originalModelRef.current = useEmbeddingStore.getState().localConfig.model;
       }
     }
-  }, [open, collection, reset, isEditMode, resetToDefaults, localConfig.model]);
+  }, [open, collection, reset, isEditMode, resetToDefaults]);
 
   // Auto-expand API key section if collection has an OpenAI key
   useEffect(() => {
