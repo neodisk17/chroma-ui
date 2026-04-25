@@ -407,6 +407,9 @@ export const AvailableModelSchema = z.object({
 });
 export type AvailableModel = z.infer<typeof AvailableModelSchema>;
 
+// Response wrapper for model list IPC (backward compat alias)
+export type AvailableModelsResponse = AvailableModel[];
+
 // Model download progress event payload
 export const ModelDownloadProgressSchema = z.object({
   modelId: z.string(),

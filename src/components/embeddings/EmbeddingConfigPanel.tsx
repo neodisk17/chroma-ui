@@ -327,7 +327,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
               <Label>HuggingFace Model ID</Label>
               <Input
                 type="text"
-                placeholder="e.g., sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+                placeholder="e.g., Xenova/multilingual-e5-small"
                 onChange={(e) => {
                   if (e.target.value.trim()) {
                     setHuggingFaceModel(e.target.value.trim());
@@ -336,7 +336,16 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                Enter any HuggingFace model ID compatible with transformers.js
+                Must be a model with ONNX weights (typically from the{' '}
+                <a
+                  href="https://huggingface.co/Xenova"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Xenova
+                </a>
+                {' '}namespace). Original models like intfloat/e5-* won't work.
               </p>
             </TabsContent>
           </Tabs>
@@ -378,9 +387,9 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
             <Loader2 className="h-4 w-4 animate-spin" />
             Downloading model: {downloadProgress.modelId}
           </div>
-          <Progress value={downloadProgress.progress || 0} />
+          <Progress value={downloadProgress.percentage || 0} />
           <p className="text-xs text-muted-foreground">
-            {downloadProgress.progress?.toFixed(0)}% complete
+            {downloadProgress.percentage?.toFixed(0)}% complete
           </p>
         </div>
       )}
@@ -388,6 +397,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
       {/* Test Button */}
       <div className="flex items-center gap-2">
         <Button
+          type="button"
           variant="outline"
           onClick={handleTestEmbedding}
           disabled={

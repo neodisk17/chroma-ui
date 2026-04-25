@@ -2,8 +2,10 @@ import { type ChangeEvent, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCreateCollection, useUpdateCollection } from '../../hooks/use-chromadb';
+import { useWarmupModel, useModelDownloadProgress, useCollectionOpenAIKeyStatus } from '../../hooks/use-embedding';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import type { Collection, DistanceFunction, EmbeddingFunction } from '../../../shared/schemas';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { Progress } from '../ui/progress';
+import { EmbeddingConfigPanel } from '../embeddings/EmbeddingConfigPanel';
+import { CollectionApiKeyPanel } from '../embeddings/CollectionApiKeyPanel';
+import { useEmbeddingStore } from '../../stores/embedding-store';
+import type { Collection, DistanceFunction } from '../../../shared/schemas';
 
 // Form schema
 const formSchema = z.object({
@@ -32,7 +39,6 @@ const formSchema = z.object({
     .min(1, 'Collection name is required')
     .max(63, 'Collection name must be at most 63 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Collection name must be alphanumeric and underscores only'),
-  embeddingFunction: z.enum(['default', 'openai', 'sentence-transformers']).optional(),
   distanceFunction: z.enum(['l2', 'cosine', 'ip']).optional(),
   metadata: z.string().optional(),
 });
@@ -48,6 +54,22 @@ interface CollectionDialogProps {
 export function CollectionDialog({ open, onOpenChange, collection }: CollectionDialogProps) {
   const isEditMode = !!collection;
   const [metadataError, setMetadataError] = useState<string | null>(null);
+  const [isEmbeddingOpen, setIsEmbeddingOpen] = useState(false);
+  const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
+
+  // Get embedding config from store
+  const { buildEmbeddingConfig, resetToDefaults, selectedProvider, hasOpenAIKey } =
+    useEmbeddingStore();
+
+  // Model warmup and download progress
+  const warmupModel = useWarmupModel();
+  const downloadProgress = useModelDownloadProgress();
+
+  // Check collection-specific API key status (only in edit mode for OpenAI collections)
+  const { data: collectionKeyStatus } = useCollectionOpenAIKeyStatus(
+    isEditMode && collection?.metadata?.embedding_provider === 'openai' ? collection.name : ''
+  );
 
   // Form setup
   const {
@@ -56,16 +78,18 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     formState: { errors, isValid },
     reset,
     setValue,
+    watch,
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: 'onChange',
     defaultValues: {
       name: collection?.name || '',
-      embeddingFunction: 'default',
       distanceFunction: 'l2',
       metadata: collection?.metadata ? JSON.stringify(collection.metadata, null, 2) : '{}',
     },
   });
+
+  const distanceFunction = watch('distanceFunction');
 
   // Register metadata with custom onChange for JSON validation
   const { onChange: metadataOnChange, ...metadataRest } = register('metadata');
@@ -97,13 +121,28 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     if (open) {
       reset({
         name: collection?.name || '',
-        embeddingFunction: 'default',
         distanceFunction: 'l2',
         metadata: collection?.metadata ? JSON.stringify(collection.metadata, null, 2) : '{}',
       });
       setMetadataError(null);
+      setIsEmbeddingOpen(false);
+      setIsWarmingUp(false);
+      // Reset embedding config to defaults when opening create dialog
+      if (!isEditMode) {
+        resetToDefaults();
+        setIsApiKeyOpen(false);
+      }
     }
-  }, [open, collection, reset]);
+  }, [open, collection, reset, isEditMode, resetToDefaults]);
+
+  // Auto-expand API key section if collection has an OpenAI key
+  useEffect(() => {
+    if (open && isEditMode && collectionKeyStatus?.hasKey) {
+      setIsApiKeyOpen(true);
+    } else if (open && isEditMode && !collectionKeyStatus?.hasKey) {
+      setIsApiKeyOpen(false);
+    }
+  }, [open, isEditMode, collectionKeyStatus?.hasKey]);
 
   // Handle form submission
   const onSubmit = async (data: FormData) => {
@@ -126,12 +165,31 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
           metadata: parsedMetadata,
         });
       } else {
-        // Create new collection
+        // Create new collection with embedding config
+        const embeddingConfig = buildEmbeddingConfig();
+
+        // For local models (default/huggingface), warm up the model first
+        // This ensures the model is downloaded before collection creation
+        if (embeddingConfig.provider !== 'openai') {
+          setIsWarmingUp(true);
+          try {
+            await warmupModel.mutateAsync(embeddingConfig);
+          } catch (error) {
+            setIsWarmingUp(false);
+            console.error("Model warmup error:", error);
+            toast.error(
+              `Failed to download embedding model: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+            return;
+          }
+          setIsWarmingUp(false);
+        }
+
         await createCollection.mutateAsync({
           name: data.name,
           metadata: parsedMetadata,
-          embeddingFunction: data.embeddingFunction,
           distanceFunction: data.distanceFunction,
+          embeddingConfig,
         });
       }
 
@@ -143,12 +201,19 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     }
   };
 
-  const isSubmitting = createCollection.isPending || updateCollection.isPending;
-  const isFormValid = isValid && !metadataError;
+  const isSubmitting = createCollection.isPending || updateCollection.isPending || isWarmingUp;
+  const isFormValid =
+    isValid &&
+    !metadataError &&
+    // If using OpenAI, require API key
+    (selectedProvider !== 'openai' || hasOpenAIKey);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent
+        className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>
             {isEditMode ? `Edit Collection: ${collection.name}` : 'Create New Collection'}
@@ -181,37 +246,12 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
             </p>
           </div>
 
-          {/* Embedding Function (Create mode only) */}
-          {!isEditMode && (
-            <div className="space-y-2">
-              <Label htmlFor="embeddingFunction">Embedding Function</Label>
-              <Select
-                defaultValue="default"
-                onValueChange={(value) =>
-                  setValue('embeddingFunction', value as EmbeddingFunction)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Default</SelectItem>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="sentence-transformers">Sentence Transformers</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                The embedding function to use for generating embeddings
-              </p>
-            </div>
-          )}
-
           {/* Distance Function (Create mode only) */}
           {!isEditMode && (
             <div className="space-y-2">
               <Label htmlFor="distanceFunction">Distance Function</Label>
               <Select
-                defaultValue="l2"
+                value={distanceFunction}
                 onValueChange={(value) =>
                   setValue('distanceFunction', value as DistanceFunction)
                 }
@@ -231,6 +271,81 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
             </div>
           )}
 
+          {/* Embedding Configuration (Create mode only) */}
+          {!isEditMode && (
+            <Collapsible open={isEmbeddingOpen} onOpenChange={setIsEmbeddingOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" type="button" className="w-full justify-between">
+                  <span>
+                    Embedding Configuration
+                    <span className="ml-2 text-muted-foreground text-xs">
+                      ({selectedProvider === 'default'
+                        ? 'Default (Local)'
+                        : selectedProvider === 'openai'
+                          ? 'OpenAI'
+                          : 'HuggingFace'}
+                      )
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    {isEmbeddingOpen ? '−' : '+'}
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-4">
+                <div className="space-y-4">
+                  <EmbeddingConfigPanel />
+
+                  {/* Collection-specific API key (only shown for OpenAI provider) */}
+                  {selectedProvider === 'openai' && watch('name') && (
+                    <div className="pt-4 border-t">
+                      <h4 className="text-sm font-medium mb-3">Collection-Specific OpenAI API Key</h4>
+                      <CollectionApiKeyPanel collectionName={watch('name')} />
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Model Download Progress (shown during warmup) */}
+          {isWarmingUp && (
+            <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+              <div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300">
+                <Download className="h-4 w-4 animate-pulse" />
+                Downloading embedding model...
+              </div>
+              {downloadProgress && downloadProgress.status === 'downloading' && (
+                <>
+                  <Progress value={downloadProgress.percentage || 0} className="h-2" />
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    {downloadProgress.percentage?.toFixed(0) || 0}% complete
+                  </p>
+                </>
+              )}
+              <p className="text-xs text-muted-foreground">
+                This may take a moment for first-time model downloads.
+              </p>
+            </div>
+          )}
+
+          {/* OpenAI API Key Settings (Edit mode only, for OpenAI collections) */}
+          {isEditMode && collection.metadata?.embedding_provider === 'openai' && (
+            <Collapsible open={isApiKeyOpen} onOpenChange={setIsApiKeyOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" type="button" className="w-full justify-between">
+                  <span>OpenAI API Key Settings</span>
+                  <span className="text-muted-foreground">
+                    {isApiKeyOpen ? '−' : '+'}
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-4">
+                <CollectionApiKeyPanel collectionName={collection.name} />
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {/* Metadata */}
           <div className="space-y-2">
             <Label htmlFor="metadata">Metadata (JSON)</Label>
@@ -239,7 +354,7 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
               {...metadataRest}
               onChange={handleMetadataChange}
               placeholder="{}"
-              rows={6}
+              rows={4}
               className={`font-mono text-xs ${metadataError ? 'border-destructive' : ''}`}
             />
             {metadataError && (
@@ -262,7 +377,11 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
             </Button>
             <Button type="submit" disabled={!isFormValid || isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditMode ? 'Save Changes' : 'Create Collection'}
+              {isWarmingUp
+                ? 'Downloading model...'
+                : isEditMode
+                  ? 'Save Changes'
+                  : 'Create Collection'}
             </Button>
           </DialogFooter>
         </form>
