@@ -9,10 +9,26 @@ import { registerChromaDBHandlers } from './ipc/chromadb-handler';
 import { connectionManager } from './services/connection-manager';
 import { autoUpdaterService } from './services/auto-updater';
 import { embeddingService } from './services/embedding-service';
+import { localModelService } from './services/local-model-service';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Suppress chromadb SDK's "No embedding function configuration found" warnings.
+// These are expected for collections created outside the JS SDK (e.g. Python client).
+// Our app fetches stored embeddings directly via collection.get() and never needs
+// the SDK to auto-generate embeddings, so the warning is irrelevant noise.
+const _originalWarn = console.warn.bind(console);
+console.warn = (...args: unknown[]) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes('No embedding function configuration found for collection')
+  ) {
+    return;
+  }
+  _originalWarn(...args);
+};
 
 // Determine if we're in development or production
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -142,6 +158,19 @@ app.whenReady().then(() => {
   // Set main window reference for embedding service (for progress events)
   if (mainWindow) {
     embeddingService.setMainWindow(mainWindow);
+  }
+
+  // Initialise model cache dir and broadcast initial model status to renderer
+  if (mainWindow) {
+    mainWindow.webContents.on('did-finish-load', async () => {
+      try {
+        localModelService.initCacheDir();
+        const models = await localModelService.listAvailableModels();
+        mainWindow!.webContents.send('model:status-ready', models);
+      } catch (err) {
+        console.warn('Startup model status check failed:', err);
+      }
+    });
   }
 
   // Initialize auto-updater in production mode
