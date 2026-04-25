@@ -1,5 +1,6 @@
 import { registerCollectionHandlers } from './collection-handlers';
 import { registerDocumentHandlers } from './document-handlers';
+import { registerEmbeddingHandlers } from './embedding-handlers';
 
 /**
  * Register all ChromaDB IPC handlers
@@ -12,5 +13,6 @@ import { registerDocumentHandlers } from './document-handlers';
 export function registerChromaDBHandlers(): void {
   registerCollectionHandlers();
   registerDocumentHandlers();
+  registerEmbeddingHandlers();
   console.log('ChromaDB IPC handlers registered');
 }

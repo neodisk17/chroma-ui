@@ -173,7 +173,6 @@ export const DocumentGrid = React.memo(function DocumentGrid({
       }
     });
   }, [data, searchQuery, searchField]);
-
   // Grid ready callback
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -269,7 +268,32 @@ export const DocumentGrid = React.memo(function DocumentGrid({
 
   // Empty state
   if (!data || data.ids.length === 0) {
-    return <EmptyState onAddDocument={() => setShowAddDialog(true)} />;
+    return (
+      <>
+        <EmptyState
+          onAddDocument={() => setShowAddDialog(true)}
+          onBulkImport={() => setShowImportDialog(true)}
+        />
+
+        {/* Add Document Dialog */}
+        {showAddDialog && (
+          <AddEditDocumentDialog
+            open={showAddDialog}
+            onClose={() => setShowAddDialog(false)}
+            collectionName={collectionName!}
+          />
+        )}
+
+        {/* Bulk Import Dialog */}
+        {showImportDialog && (
+          <BulkImportDialog
+            open={showImportDialog}
+            onClose={() => setShowImportDialog(false)}
+            collectionName={collectionName!}
+          />
+        )}
+      </>
+    );
   }
 
   return (

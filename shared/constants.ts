@@ -37,6 +37,16 @@ export const IPC_CHANNELS = {
   UPDATE_DOWNLOAD: 'updater:download',
   UPDATE_INSTALL: 'updater:install',
   UPDATE_SET_TOKEN: 'updater:set-token',
+
+  // Embedding management channels
+  EMBEDDING_SET_API_KEY: 'embedding:set-api-key',
+  EMBEDDING_GET_API_KEY_STATUS: 'embedding:get-api-key-status',
+  EMBEDDING_DELETE_API_KEY: 'embedding:delete-api-key',
+  EMBEDDING_TEST: 'embedding:test',
+  EMBEDDING_WARMUP: 'embedding:warmup',
+  EMBEDDING_IS_READY: 'embedding:is-ready',
+  MODEL_LIST_AVAILABLE: 'model:list-available',
+  MODEL_DOWNLOAD_PROGRESS: 'model:download-progress',
 } as const;
 
 // Window dimensions

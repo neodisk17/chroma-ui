@@ -17,22 +17,6 @@ import type {
 import { IPC_CHANNELS } from '../../shared/constants';
 import { useQueryStore } from '@/stores/query-store';
 
-// Type for IPC response
-interface IPCResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-// Declare the electronAPI on window
-declare global {
-  interface Window {
-    electronAPI: {
-      invoke: <T>(channel: string, ...args: unknown[]) => Promise<IPCResponse<T>>;
-    };
-  }
-}
-
 // ============================================================================
 // Query Keys
 // ============================================================================

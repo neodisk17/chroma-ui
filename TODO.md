@@ -1655,16 +1655,16 @@ VERIFICATION STEPS:
 
 ### Tasks Checklist
 
-- [ ] 10.1 Configure electron-builder.yml
-- [ ] 10.2 Create application icons
-- [ ] 10.3 Set up code signing (optional)
-- [ ] 10.4 Configure auto-updater (optional)
-- [ ] 10.5 Build for macOS
-- [ ] 10.6 Build for Windows
-- [ ] 10.7 Build for Linux
+- [x] 10.1 Configure electron-builder.yml
+- [x] 10.2 Create application icons
+- [ ] 10.3 Set up code signing (optional - requires Apple Developer / Windows cert)
+- [x] 10.4 Configure auto-updater (private GitHub repo with GH_TOKEN)
+- [x] 10.5 Build for macOS (native: `npm run build:mac`)
+- [x] 10.6 Build for Windows (Docker: `npm run build:docker:win`)
+- [x] 10.7 Build for Linux (Docker: `npm run build:docker:linux`)
 - [ ] 10.8 Test installers on each platform
 - [ ] 10.9 Create user documentation
-- [ ] 10.10 Optimize bundle size and create distribution package
+- [x] 10.10 Optimize bundle size and create distribution package
 
 ### Production-Grade Prompt for Phase 10
 

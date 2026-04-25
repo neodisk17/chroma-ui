@@ -136,12 +136,14 @@ export const CollectionSchema = z.object({
 
 export type Collection = z.infer<typeof CollectionSchema>;
 
-// Create Collection Request Schema
+// Create Collection Request Schema (embeddingConfig will be validated separately)
 export const CreateCollectionRequestSchema = z.object({
   name: z.string().min(1).max(63).regex(/^[a-zA-Z0-9_]+$/, 'Collection name must be alphanumeric and underscores only'),
   metadata: CollectionMetadataSchema,
   embeddingFunction: EmbeddingFunctionSchema.optional(),
   distanceFunction: DistanceFunctionSchema.optional(),
+  // New: Full embedding configuration (validated at runtime with EmbeddingConfigSchema)
+  embeddingConfig: z.any().optional(),
 });
 
 export type CreateCollectionRequest = z.infer<typeof CreateCollectionRequestSchema>;
@@ -334,3 +336,103 @@ export const BulkImportResponseSchema = z.object({
 });
 
 export type BulkImportResponse = z.infer<typeof BulkImportResponseSchema>;
+
+// ============================================================================
+// Embedding Configuration Schemas
+// ============================================================================
+
+// Embedding Provider Enum
+export const EmbeddingProviderSchema = z.enum(['default', 'openai', 'huggingface']);
+export type EmbeddingProvider = z.infer<typeof EmbeddingProviderSchema>;
+
+// Data Type for quantization
+export const DTypeSchema = z.enum(['fp32', 'fp16', 'q8', 'int8']);
+export type DType = z.infer<typeof DTypeSchema>;
+
+// OpenAI Model Options
+export const OpenAIModelSchema = z.enum([
+  'text-embedding-3-small',
+  'text-embedding-3-large',
+  'text-embedding-ada-002',
+]);
+export type OpenAIModel = z.infer<typeof OpenAIModelSchema>;
+
+// Default Embedding Config
+export const DefaultEmbeddingConfigSchema = z.object({
+  provider: z.literal('default'),
+  model: z.string().default('Xenova/all-MiniLM-L6-v2'),
+  dtype: DTypeSchema.default('fp32'),
+});
+export type DefaultEmbeddingConfig = z.infer<typeof DefaultEmbeddingConfigSchema>;
+
+// OpenAI Embedding Config
+export const OpenAIEmbeddingConfigSchema = z.object({
+  provider: z.literal('openai'),
+  model: OpenAIModelSchema.default('text-embedding-3-small'),
+  dimensions: z.number().int().min(256).max(3072).optional(),
+});
+export type OpenAIEmbeddingConfig = z.infer<typeof OpenAIEmbeddingConfigSchema>;
+
+// HuggingFace Embedding Config
+export const HuggingFaceEmbeddingConfigSchema = z.object({
+  provider: z.literal('huggingface'),
+  model: z.string().min(1),
+  dtype: DTypeSchema.default('fp32'),
+});
+export type HuggingFaceEmbeddingConfig = z.infer<typeof HuggingFaceEmbeddingConfigSchema>;
+
+// Discriminated Union for Embedding Config
+export const EmbeddingConfigSchema = z.discriminatedUnion('provider', [
+  DefaultEmbeddingConfigSchema,
+  OpenAIEmbeddingConfigSchema,
+  HuggingFaceEmbeddingConfigSchema,
+]);
+export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
+
+// Model Download Progress
+export const ModelDownloadProgressSchema = z.object({
+  modelId: z.string(),
+  status: z.enum(['pending', 'downloading', 'completed', 'error']),
+  progress: z.number().min(0).max(100).optional(),
+  error: z.string().optional(),
+});
+export type ModelDownloadProgress = z.infer<typeof ModelDownloadProgressSchema>;
+
+// HuggingFace Model Info
+export const HuggingFaceModelInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  dimensions: z.number().int().positive(),
+  size: z.string(),
+  description: z.string().optional(),
+});
+export type HuggingFaceModelInfo = z.infer<typeof HuggingFaceModelInfoSchema>;
+
+// Available Models Response
+export const AvailableModelsResponseSchema = z.object({
+  models: z.array(HuggingFaceModelInfoSchema),
+});
+export type AvailableModelsResponse = z.infer<typeof AvailableModelsResponseSchema>;
+
+// Test Embedding Request
+export const TestEmbeddingRequestSchema = z.object({
+  config: EmbeddingConfigSchema,
+  testText: z.string().default('This is a test sentence for embedding.'),
+});
+export type TestEmbeddingRequest = z.infer<typeof TestEmbeddingRequestSchema>;
+
+// Test Embedding Response
+export const TestEmbeddingResponseSchema = z.object({
+  success: z.boolean(),
+  dimensions: z.number().int().positive().optional(),
+  sampleEmbedding: z.array(z.number()).optional(),
+  error: z.string().optional(),
+});
+export type TestEmbeddingResponse = z.infer<typeof TestEmbeddingResponseSchema>;
+
+// API Key Status
+export const ApiKeyStatusSchema = z.object({
+  provider: z.string(),
+  hasKey: z.boolean(),
+});
+export type ApiKeyStatus = z.infer<typeof ApiKeyStatusSchema>;

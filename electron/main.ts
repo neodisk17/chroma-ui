@@ -8,6 +8,7 @@ import { registerConnectionHandlers } from './ipc/connection-handler';
 import { registerChromaDBHandlers } from './ipc/chromadb-handler';
 import { connectionManager } from './services/connection-manager';
 import { autoUpdaterService } from './services/auto-updater';
+import { embeddingService } from './services/embedding-service';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -137,6 +138,11 @@ app.whenReady().then(() => {
 
   // Create the main window
   createWindow();
+
+  // Set main window reference for embedding service (for progress events)
+  if (mainWindow) {
+    embeddingService.setMainWindow(mainWindow);
+  }
 
   // Initialize auto-updater in production mode
   if (!isDev && mainWindow) {

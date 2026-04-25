@@ -1,6 +1,8 @@
+import type { EmbeddingFunction } from 'chromadb';
 import { connectionManager } from '../../services/connection-manager';
+import { embeddingService } from '../../services/embedding-service';
 import type { Metadata } from '../../../src/types/chromadb.types';
-import { Collection, MetadataFilter, DocumentFilter } from '../../../shared/schemas';
+import { Collection, MetadataFilter, DocumentFilter, EmbeddingConfigSchema } from '../../../shared/schemas';
 
 // ChromaDB result types
 export type IncludeOption = 'documents' | 'metadatas' | 'embeddings';
@@ -48,13 +50,38 @@ export function getClientOrError() {
 
 export async function getCollectionOrError(
   client: NonNullable<ReturnType<typeof connectionManager.getActiveClient>>,
-  name: string
+  name: string,
+  embeddingFunction?: EmbeddingFunction
 ) {
-  const collection = await client.getCollection({ name });
+  const collection = await client.getCollection({ name, embeddingFunction });
   if (!collection) {
     return { collection: null, error: errorResponse(`Collection '${name}' not found`) };
   }
   return { collection, error: null };
+}
+
+/**
+ * Reconstructs the embedding function from collection metadata.
+ * ChromaDB does not persist embedding functions - they must be recreated
+ * from the stored configuration when retrieving collections.
+ */
+export async function getEmbeddingFunctionFromMetadata(
+  client: NonNullable<ReturnType<typeof connectionManager.getActiveClient>>,
+  collectionName: string
+): Promise<EmbeddingFunction | undefined> {
+  try {
+    // Get collection without embedding function to read metadata
+    const collection = await client.getCollection({ name: collectionName });
+    const embeddingConfigStr = collection.metadata?.['embedding_config'];
+
+    if (embeddingConfigStr && typeof embeddingConfigStr === 'string') {
+      const config = EmbeddingConfigSchema.parse(JSON.parse(embeddingConfigStr));
+      return await embeddingService.createEmbeddingFunction(config);
+    }
+  } catch (error) {
+    console.warn(`Failed to reconstruct embedding function for ${collectionName}:`, error);
+  }
+  return undefined;
 }
 
 function isNotFoundError(error: unknown): boolean {

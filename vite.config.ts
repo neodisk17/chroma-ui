@@ -13,6 +13,8 @@ const electronExternals = [
   'electron-log',
   'keytar',
   'chromadb',
+  '@chroma-core/default-embed',
+  'onnxruntime-node',
 ];
 
 // https://vitejs.dev/config/

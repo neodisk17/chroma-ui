@@ -23,6 +23,7 @@ import {
   successResponse,
   getClientOrError,
   getCollectionOrError,
+  getEmbeddingFunctionFromMetadata,
   handleError,
   buildWhereClause,
   buildWhereDocumentClause,
@@ -112,7 +113,23 @@ export function registerDocumentHandlers(): void {
       const { client, error: clientError } = getClientOrError();
       if (clientError) return clientError;
 
-      const { collection, error: collectionError } = await getCollectionOrError(client, request.collectionName);
+      // For text-based similarity queries, we need the embedding function
+      // to convert the query text to an embedding vector
+      const needsEmbeddingFunction =
+        (request.queryType === 'similarity' || request.queryType === 'combined') &&
+        request.queryText &&
+        !request.embeddingVector;
+
+      let embeddingFunction;
+      if (needsEmbeddingFunction) {
+        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+      }
+
+      const { collection, error: collectionError } = await getCollectionOrError(
+        client,
+        request.collectionName,
+        embeddingFunction
+      );
       if (collectionError) return collectionError;
 
       let results: ChromaDBQueryResult | undefined;
@@ -191,7 +208,18 @@ export function registerDocumentHandlers(): void {
       const { client, error: clientError } = getClientOrError();
       if (clientError) return clientError;
 
-      const { collection, error: collectionError } = await getCollectionOrError(client, request.collectionName);
+      // If no embedding is provided, we need to reconstruct the embedding function
+      // to auto-generate embeddings from the document text
+      let embeddingFunction;
+      if (!request.embedding) {
+        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+      }
+
+      const { collection, error: collectionError } = await getCollectionOrError(
+        client,
+        request.collectionName,
+        embeddingFunction
+      );
       if (collectionError) return collectionError;
 
       const documentId = request.id || uuidv4();
@@ -217,7 +245,18 @@ export function registerDocumentHandlers(): void {
       const { client, error: clientError } = getClientOrError();
       if (clientError) return clientError;
 
-      const { collection, error: collectionError } = await getCollectionOrError(client, request.collectionName);
+      // If document text is being updated without a new embedding,
+      // we need the embedding function to regenerate the embedding
+      let embeddingFunction;
+      if (request.document && !request.embedding) {
+        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+      }
+
+      const { collection, error: collectionError } = await getCollectionOrError(
+        client,
+        request.collectionName,
+        embeddingFunction
+      );
       if (collectionError) return collectionError;
 
       await collection.update({
@@ -261,7 +300,20 @@ export function registerDocumentHandlers(): void {
       const { client, error: clientError } = getClientOrError();
       if (clientError) return clientError;
 
-      const { collection, error: collectionError } = await getCollectionOrError(client, request.collectionName);
+      // Check if any documents are missing embeddings
+      const hasDocumentWithoutEmbedding = request.documents.some((doc) => !doc.embedding);
+
+      // If any document is missing an embedding, we need the embedding function
+      let embeddingFunction;
+      if (hasDocumentWithoutEmbedding) {
+        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+      }
+
+      const { collection, error: collectionError } = await getCollectionOrError(
+        client,
+        request.collectionName,
+        embeddingFunction
+      );
       if (collectionError) return collectionError;
 
       const ids: string[] = [];

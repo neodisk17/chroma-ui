@@ -4,6 +4,7 @@ node_modules/
 # Production builds
 dist/
 dist-electron/
+release/
 
 # Development
 .DS_Store
@@ -31,3 +32,9 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+
+chroma
+scripts
+data.json
+
+website

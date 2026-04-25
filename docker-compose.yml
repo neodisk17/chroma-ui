@@ -10,8 +10,6 @@ services:
     volumes:
       - ./release:/app/release
     environment:
-      - GH_TOKEN=${GH_TOKEN:-}
-      - GH_OWNER=${GH_OWNER:-}
       - NODE_ENV=production
 
   # Build Linux packages (AppImage + deb)
@@ -23,11 +21,10 @@ services:
     volumes:
       - ./release:/app/release
     environment:
-      - GH_TOKEN=${GH_TOKEN:-}
-      - GH_OWNER=${GH_OWNER:-}
       - NODE_ENV=production
 
   # Build and publish all platforms (Windows + Linux) to GitHub releases
+  # Requires GH_TOKEN env var to be set for authentication
   electron-builder-publish:
     build:
       context: .
@@ -37,5 +34,4 @@ services:
       - ./release:/app/release
     environment:
       - GH_TOKEN=${GH_TOKEN}
-      - GH_OWNER=${GH_OWNER}
       - NODE_ENV=production

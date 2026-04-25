@@ -12,6 +12,9 @@ export interface ElectronAPI {
 
   // Auto-updater listener
   onUpdaterEvent: (callback: (event: string, data: unknown) => void) => () => void;
+
+  // Model download progress listener
+  onModelDownloadProgress: (callback: (progress: unknown) => void) => () => void;
 }
 
 // Expose protected methods that allow the renderer process to use
@@ -67,6 +70,19 @@ const electronAPI: ElectronAPI = {
       listeners.forEach(({ channel, listener }) => {
         ipcRenderer.removeListener(channel, listener);
       });
+    };
+  },
+
+  onModelDownloadProgress: (callback: (progress: unknown) => void) => {
+    const channel = 'model:download-progress';
+    const listener = (_event: unknown, data: unknown) => {
+      callback(data);
+    };
+    ipcRenderer.on(channel, listener);
+
+    // Return cleanup function
+    return () => {
+      ipcRenderer.removeListener(channel, listener);
     };
   },
 };

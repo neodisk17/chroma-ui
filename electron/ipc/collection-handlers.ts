@@ -4,6 +4,7 @@ import {
   UpdateCollectionRequestSchema,
   DeleteCollectionRequestSchema,
   GetCollectionRequestSchema,
+  EmbeddingConfigSchema,
   Collection,
 } from '../../shared/schemas';
 import {
@@ -15,6 +16,7 @@ import {
   handleError,
   formatCollection,
 } from './helpers/ipc-helpers';
+import { embeddingService } from '../services/embedding-service';
 
 /**
  * Register collection-related IPC handlers
@@ -94,13 +96,32 @@ export function registerCollectionHandlers(): void {
       if (request.distanceFunction) {
         metadata['hnsw:space'] = request.distanceFunction;
       }
-      if (request.embeddingFunction && request.embeddingFunction !== 'default') {
+
+      // Handle embedding function configuration
+      let embeddingFunction = undefined;
+
+      // New: Use full embedding configuration if provided
+      if (request.embeddingConfig) {
+        try {
+          const config = EmbeddingConfigSchema.parse(request.embeddingConfig);
+          embeddingFunction = await embeddingService.createEmbeddingFunction(config);
+
+          // Store embedding config in metadata for reference
+          metadata['embedding_config'] = JSON.stringify(config);
+          metadata['embedding_provider'] = config.provider;
+        } catch (embeddingError) {
+          const errMsg = embeddingError instanceof Error ? embeddingError.message : 'Unknown error';
+          return errorResponse(`Failed to create embedding function: ${errMsg}`);
+        }
+      } else if (request.embeddingFunction && request.embeddingFunction !== 'default') {
+        // Legacy: Store as metadata for backward compatibility
         metadata['embedding_function'] = request.embeddingFunction;
       }
 
       const collection = await client.createCollection({
         name: request.name,
         metadata: { ...metadata, created_at: new Date().toISOString() },
+        embeddingFunction,
       });
 
       return successResponse(formatCollection(collection, 0));

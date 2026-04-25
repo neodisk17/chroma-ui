@@ -27,13 +27,13 @@ extraMetadata:
   main: dist-electron/main.js
 
 # Auto-updater configuration for private GitHub repo
+# Note: GH_TOKEN env var is only required when publishing (--publish always)
 publish:
   - provider: github
-    owner: ${env.GH_OWNER}
-    repo: chromadb-ui
+    owner: neodisk17
+    repo: chroma-ui
     private: true
     releaseType: release
-    token: ${env.GH_TOKEN}
 
 # macOS Configuration
 mac:
@@ -120,3 +120,5 @@ asar: true
 asarUnpack:
   - "**/*.node"
   - "**/node_modules/keytar/**"
+  - "**/node_modules/onnxruntime-node/**"
+  - "**/node_modules/@chroma-core/default-embed/**"
