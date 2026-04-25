@@ -16,6 +16,9 @@ import { QueryResults } from './QueryResults';
 import { QueryTemplates } from './QueryTemplates';
 import { useExecuteQuery } from '@/hooks/use-chromadb';
 import type { ChromaDBQueryObject, ChromaDBWhereClause, ChromaDBWhereDocument } from '@/types/chromadb.types';
+import { ExternalCollectionConfigDialog } from '../embeddings/ExternalCollectionConfigDialog';
+import { useAvailableModels } from '../../hooks/use-embedding';
+import type { EmbeddingConfig } from '../../../shared/schemas';
 
 interface QueryBuilderProps {
   collectionName?: string;
@@ -36,7 +39,12 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
   const [similarityOpen, setSimilarityOpen] = useState(true);
   const [metadataOpen, setMetadataOpen] = useState(true);
   const [documentOpen, setDocumentOpen] = useState(true);
+  const [externalConfigPrompt, setExternalConfigPrompt] = useState<{
+    collectionName: string;
+    detectedDimensions: number | null;
+  } | null>(null);
   const executeQuery = useExecuteQuery();
+  const { data: availableModels = [] } = useAvailableModels();
 
   // Count active filters
   const activeMetadataFilters = metadataFilters.filter(f => f.field && f.value).length;
@@ -93,14 +101,30 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
       queryType = 'filter';
     }
 
-    await executeQuery.mutateAsync({
-      collectionName,
-      queryType,
-      queryText: queryText || undefined,
-      nResults,
-      metadataFilters: metadataFilters.length > 0 ? metadataFilters : undefined,
-      documentFilters: documentFilters.length > 0 ? documentFilters : undefined,
-    });
+    try {
+      await executeQuery.mutateAsync({
+        collectionName,
+        queryType,
+        queryText: queryText || undefined,
+        nResults,
+        metadataFilters: metadataFilters.length > 0 ? metadataFilters : undefined,
+        documentFilters: documentFilters.length > 0 ? documentFilters : undefined,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.includes('does not have an embedding configuration') ||
+        message.includes('no embedding config')
+      ) {
+        setExternalConfigPrompt({
+          collectionName,
+          detectedDimensions: null,
+        });
+        // Don't re-throw — the dialog handles recovery
+        return;
+      }
+      // Other errors are handled by useExecuteQuery's onError (store + toast)
+    }
   };
 
   const isQueryEmpty = !queryText && metadataFilters.length === 0 && documentFilters.length === 0;
@@ -288,6 +312,21 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
         <div className="border-t bg-destructive/10 p-4">
           <p className="text-sm text-destructive">{error}</p>
         </div>
+      )}
+
+      {externalConfigPrompt && (
+        <ExternalCollectionConfigDialog
+          open={!!externalConfigPrompt}
+          collectionName={externalConfigPrompt.collectionName}
+          detectedDimensions={externalConfigPrompt.detectedDimensions}
+          availableModels={availableModels}
+          onSaved={(_config: EmbeddingConfig) => {
+            setExternalConfigPrompt(null);
+            // Retry the query — config is now saved to collection metadata
+            handleExecute();
+          }}
+          onCancel={() => setExternalConfigPrompt(null)}
+        />
       )}
     </div>
   );
