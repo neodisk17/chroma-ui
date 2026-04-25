@@ -12,13 +12,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { DocumentEditor, DocumentFormData, validateDocumentForm } from './DocumentEditor';
 import { useAddDocument, useUpdateDocument } from '@/hooks/use-chromadb';
-import type { Document } from '../../../shared/schemas';
+import { ModelDownloadDialog } from '../embeddings/ModelDownloadDialog';
+import { useAvailableModels } from '../../hooks/use-embedding';
+import type { Document, Collection } from '../../../shared/schemas';
 import type { Metadata } from '@/types/chromadb.types';
 
 interface AddEditDocumentDialogProps {
   open: boolean;
   onClose: () => void;
   collectionName: string;
+  collection?: Collection | null; // Optional: enables model-download-on-error flow
   document?: Document | null; // If provided, edit mode; otherwise, add mode
 }
 
@@ -31,18 +34,27 @@ interface AddEditDocumentDialogProps {
  * - Loading states
  * - Error handling
  * - Success/error toasts (from mutation hooks)
+ * - Automatic model download prompt when local embedding model is missing
  */
 export function AddEditDocumentDialog({
   open,
   onClose,
   collectionName,
+  collection,
   document,
 }: AddEditDocumentDialogProps) {
   const [formData, setFormData] = useState<DocumentFormData | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [downloadPrompt, setDownloadPrompt] = useState<{
+    modelId: string;
+    modelName: string;
+    sizeLabel: string;
+    pendingAction: () => void;
+  } | null>(null);
 
   const addDocument = useAddDocument();
   const updateDocument = useUpdateDocument();
+  const { data: availableModels = [] } = useAvailableModels();
 
   const isEditMode = !!document;
   const isLoading = addDocument.isPending || updateDocument.isPending;
@@ -51,6 +63,7 @@ export function AddEditDocumentDialog({
   useEffect(() => {
     if (open) {
       setValidationErrors([]);
+      setDownloadPrompt(null);
     }
   }, [open, document]);
 
@@ -95,56 +108,98 @@ export function AddEditDocumentDialog({
       // Close dialog on success
       onClose();
     } catch (error) {
-      // Error toast is shown by mutation hook
+      const message = error instanceof Error ? error.message : String(error);
+
+      // Detect missing model — prompt user to download before retrying
+      if (message.includes('Failed to load model') || message.includes('ENOENT')) {
+        const configStr = collection?.metadata?.embedding_config;
+        if (configStr) {
+          try {
+            const config = JSON.parse(String(configStr));
+            const modelInfo = availableModels.find((m) => m.id === config.model);
+            if (modelInfo) {
+              setDownloadPrompt({
+                modelId: modelInfo.id,
+                modelName: modelInfo.name,
+                sizeLabel: modelInfo.sizeLabel,
+                pendingAction: () => handleSubmit(), // retry after download
+              });
+              return;
+            }
+          } catch {
+            // malformed config — fall through to normal error handling
+          }
+        }
+      }
+
+      // Normal error: logged by mutation hook's onError toast
       console.error('Document operation error:', error);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? 'Edit Document' : 'Add Document to'} {collectionName}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditMode
-              ? 'Update the document fields below. ID cannot be changed.'
-              : 'Fill in the document details. Fields marked with * are required.'}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditMode ? 'Edit Document' : 'Add Document to'} {collectionName}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditMode
+                ? 'Update the document fields below. ID cannot be changed.'
+                : 'Fill in the document details. Fields marked with * are required.'}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="py-4">
-          <DocumentEditor
-            document={document}
-            onDataChange={setFormData}
-          />
+          <div className="py-4">
+            <DocumentEditor
+              document={document}
+              onDataChange={setFormData}
+            />
 
-          {/* Validation Errors */}
-          {validationErrors.length > 0 && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <ul className="list-disc list-inside space-y-1">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+            {/* Validation Errors */}
+            {validationErrors.length > 0 && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside space-y-1">
+                    {validationErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || !formData}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditMode ? 'Update Document' : 'Add Document'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isLoading || !formData}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditMode ? 'Update Document' : 'Add Document'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Model download prompt — shown when operation fails due to missing local model */}
+      {downloadPrompt && (
+        <ModelDownloadDialog
+          open={!!downloadPrompt}
+          modelId={downloadPrompt.modelId}
+          modelName={downloadPrompt.modelName}
+          sizeLabel={downloadPrompt.sizeLabel}
+          onDownloadComplete={() => {
+            const action = downloadPrompt.pendingAction;
+            setDownloadPrompt(null);
+            action();
+          }}
+          onCancel={() => setDownloadPrompt(null)}
+        />
+      )}
+    </>
   );
 }
