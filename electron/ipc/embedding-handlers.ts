@@ -7,7 +7,6 @@ import {
   TestEmbeddingRequestSchema,
   type ApiKeyStatus,
   type AvailableModel,
-  type AvailableModelsResponse,
   type ModelDownloadProgress,
   type TestEmbeddingResponse,
 } from '../../shared/schemas';
@@ -193,7 +192,7 @@ export function registerEmbeddingHandlers(): void {
     'model:check-integrity',
     async (_, requestData: { modelId: string }): Promise<IpcResponse<boolean>> => {
       try {
-        const intact = localModelService.checkModelIntegrity(requestData.modelId);
+        const intact = await localModelService.checkModelIntegrity(requestData.modelId);
         return successResponse(intact);
       } catch (error) {
         return handleError(error, 'model:check-integrity', 'Failed to check model integrity');

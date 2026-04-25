@@ -2,6 +2,7 @@ import * as keytar from 'keytar';
 import type { EmbeddingFunction } from 'chromadb';
 import type {
   EmbeddingConfig,
+  LocalEmbeddingConfig,
   OpenAIEmbeddingConfig,
   HuggingFaceEmbeddingConfig,
   HuggingFaceModelPreset,
@@ -381,7 +382,7 @@ export class EmbeddingService {
 
     switch (parsed.provider) {
       case 'local': {
-        const localConfig = parsed as any; // Local embeddings don't have a specific config type yet
+        const localConfig = parsed as LocalEmbeddingConfig;
         embedder = await localModelService.createLocalEmbeddingFunction(
           localConfig.model,
           localConfig.dtype
