@@ -341,13 +341,21 @@ export type BulkImportResponse = z.infer<typeof BulkImportResponseSchema>;
 // Embedding Configuration Schemas
 // ============================================================================
 
-// Embedding Provider Enum
-export const EmbeddingProviderSchema = z.enum(['default', 'openai', 'huggingface']);
+// Embedding Provider Enum (includes 'local' for @xenova/transformers)
+export const EmbeddingProviderSchema = z.enum(['local', 'openai', 'huggingface']);
 export type EmbeddingProvider = z.infer<typeof EmbeddingProviderSchema>;
 
-// Data Type for quantization
+// DType for local model quantization
 export const DTypeSchema = z.enum(['fp32', 'fp16', 'q8', 'int8']);
 export type DType = z.infer<typeof DTypeSchema>;
+
+// Local Embedding Config (uses @xenova/transformers locally)
+export const LocalEmbeddingConfigSchema = z.object({
+  provider: z.literal('local'),
+  model: z.string().min(1).default('Xenova/all-MiniLM-L6-v2'),
+  dtype: DTypeSchema.default('fp32'),
+});
+export type LocalEmbeddingConfig = z.infer<typeof LocalEmbeddingConfigSchema>;
 
 // OpenAI Model Options
 export const OpenAIModelSchema = z.enum([
@@ -357,14 +365,6 @@ export const OpenAIModelSchema = z.enum([
 ]);
 export type OpenAIModel = z.infer<typeof OpenAIModelSchema>;
 
-// Default Embedding Config
-export const DefaultEmbeddingConfigSchema = z.object({
-  provider: z.literal('default'),
-  model: z.string().default('Xenova/all-MiniLM-L6-v2'),
-  dtype: DTypeSchema.default('fp32'),
-});
-export type DefaultEmbeddingConfig = z.infer<typeof DefaultEmbeddingConfigSchema>;
-
 // OpenAI Embedding Config
 export const OpenAIEmbeddingConfigSchema = z.object({
   provider: z.literal('openai'),
@@ -373,46 +373,57 @@ export const OpenAIEmbeddingConfigSchema = z.object({
 });
 export type OpenAIEmbeddingConfig = z.infer<typeof OpenAIEmbeddingConfigSchema>;
 
-// HuggingFace Embedding Config
+// HuggingFace Embedding Config (uses HuggingFace Inference API)
 export const HuggingFaceEmbeddingConfigSchema = z.object({
   provider: z.literal('huggingface'),
-  model: z.string().min(1),
-  dtype: DTypeSchema.default('fp32'),
+  model: z.string().min(1).default('sentence-transformers/all-MiniLM-L6-v2'),
 });
 export type HuggingFaceEmbeddingConfig = z.infer<typeof HuggingFaceEmbeddingConfigSchema>;
 
 // Discriminated Union for Embedding Config
 export const EmbeddingConfigSchema = z.discriminatedUnion('provider', [
-  DefaultEmbeddingConfigSchema,
+  LocalEmbeddingConfigSchema,
   OpenAIEmbeddingConfigSchema,
   HuggingFaceEmbeddingConfigSchema,
 ]);
 export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
 
-// Model Download Progress
+// Default config constant
+export const DEFAULT_EMBEDDING_CONFIG: LocalEmbeddingConfig = {
+  provider: 'local',
+  model: 'Xenova/all-MiniLM-L6-v2',
+  dtype: 'fp32',
+};
+
+// Available local model (for UI model picker)
+export const AvailableModelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  sizeLabel: z.string(),
+  dimensions: z.number().int().positive(),
+  description: z.string().optional(),
+  isDefault: z.boolean().default(false),
+  isDownloaded: z.boolean().default(false),
+});
+export type AvailableModel = z.infer<typeof AvailableModelSchema>;
+
+// Model download progress event payload
 export const ModelDownloadProgressSchema = z.object({
   modelId: z.string(),
-  status: z.enum(['pending', 'downloading', 'completed', 'error']),
-  progress: z.number().min(0).max(100).optional(),
+  percentage: z.number().min(0).max(100),
+  status: z.enum(['downloading', 'complete', 'error', 'cancelled']),
   error: z.string().optional(),
 });
 export type ModelDownloadProgress = z.infer<typeof ModelDownloadProgressSchema>;
 
-// HuggingFace Model Info
-export const HuggingFaceModelInfoSchema = z.object({
+// HuggingFace Model Preset (for UI convenience)
+export const HuggingFaceModelPresetSchema = z.object({
   id: z.string(),
   name: z.string(),
   dimensions: z.number().int().positive(),
-  size: z.string(),
   description: z.string().optional(),
 });
-export type HuggingFaceModelInfo = z.infer<typeof HuggingFaceModelInfoSchema>;
-
-// Available Models Response
-export const AvailableModelsResponseSchema = z.object({
-  models: z.array(HuggingFaceModelInfoSchema),
-});
-export type AvailableModelsResponse = z.infer<typeof AvailableModelsResponseSchema>;
+export type HuggingFaceModelPreset = z.infer<typeof HuggingFaceModelPresetSchema>;
 
 // Test Embedding Request
 export const TestEmbeddingRequestSchema = z.object({
@@ -436,3 +447,33 @@ export const ApiKeyStatusSchema = z.object({
   hasKey: z.boolean(),
 });
 export type ApiKeyStatus = z.infer<typeof ApiKeyStatusSchema>;
+
+// ============================================================================
+// Collection-Level API Key Management Schemas
+// ============================================================================
+
+// Set Collection API Key Request
+export const SetCollectionApiKeyRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+  apiKey: z.string().min(1, 'API key is required'),
+});
+export type SetCollectionApiKeyRequest = z.infer<typeof SetCollectionApiKeyRequestSchema>;
+
+// Get Collection API Key Status Request
+export const GetCollectionApiKeyStatusRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+});
+export type GetCollectionApiKeyStatusRequest = z.infer<typeof GetCollectionApiKeyStatusRequestSchema>;
+
+// Collection API Key Status Response
+export const CollectionApiKeyStatusSchema = z.object({
+  hasKey: z.boolean(),
+  hasGlobalKey: z.boolean(),
+});
+export type CollectionApiKeyStatus = z.infer<typeof CollectionApiKeyStatusSchema>;
+
+// Delete Collection API Key Request
+export const DeleteCollectionApiKeyRequestSchema = z.object({
+  collectionName: z.string().min(1, 'Collection name is required'),
+});
+export type DeleteCollectionApiKeyRequest = z.infer<typeof DeleteCollectionApiKeyRequestSchema>;
