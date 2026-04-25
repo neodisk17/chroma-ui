@@ -33,6 +33,7 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     isExecuting,
     error,
     clearQuery,
+    setError,
   } = useQueryStore();
 
   const [showJsonPreview, setShowJsonPreview] = useState(false);
@@ -43,6 +44,7 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     collectionName: string;
     detectedDimensions: number | null;
   } | null>(null);
+  const [configRetryAttempted, setConfigRetryAttempted] = useState(false);
   const executeQuery = useExecuteQuery();
   const { data: availableModels = [] } = useAvailableModels();
 
@@ -113,13 +115,18 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (
-        message.includes('does not have an embedding configuration') ||
-        message.includes('no embedding config')
+        !configRetryAttempted &&
+        (message.includes('does not have an embedding configuration') ||
+          message.includes('no embedding config'))
       ) {
+        setConfigRetryAttempted(true);
         setExternalConfigPrompt({
           collectionName,
           detectedDimensions: null,
         });
+        // Clear the error that onError already wrote to the store so the toast
+        // and the inline error banner don't appear alongside the config dialog.
+        setError(null);
         // Don't re-throw — the dialog handles recovery
         return;
       }
@@ -325,7 +332,10 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
             // Retry the query — config is now saved to collection metadata
             handleExecute();
           }}
-          onCancel={() => setExternalConfigPrompt(null)}
+          onCancel={() => {
+            setExternalConfigPrompt(null);
+            setConfigRetryAttempted(false);
+          }}
         />
       )}
     </div>

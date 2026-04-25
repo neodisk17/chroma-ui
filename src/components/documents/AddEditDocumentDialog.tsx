@@ -114,20 +114,24 @@ export function AddEditDocumentDialog({
       if (message.includes('Failed to load model') || message.includes('ENOENT')) {
         const configStr = collection?.metadata?.embedding_config;
         if (configStr) {
-          try {
-            const config = JSON.parse(String(configStr));
-            const modelInfo = availableModels.find((m) => m.id === config.model);
-            if (modelInfo) {
-              setDownloadPrompt({
-                modelId: modelInfo.id,
-                modelName: modelInfo.name,
-                sizeLabel: modelInfo.sizeLabel,
-                pendingAction: () => handleSubmit(), // retry after download
-              });
-              return;
-            }
-          } catch {
+          if (typeof configStr !== 'string') {
             // malformed config — fall through to normal error handling
+          } else {
+            try {
+              const config = JSON.parse(configStr);
+              const modelInfo = availableModels.find((m) => m.id === config.model);
+              if (modelInfo) {
+                setDownloadPrompt({
+                  modelId: modelInfo.id,
+                  modelName: modelInfo.name,
+                  sizeLabel: modelInfo.sizeLabel,
+                  pendingAction: () => handleSubmit(), // retry after download
+                });
+                return;
+              }
+            } catch {
+              // malformed JSON — fall through to normal error handling
+            }
           }
         }
       }
