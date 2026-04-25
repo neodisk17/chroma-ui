@@ -40,15 +40,18 @@ describe('ModelDownloadDialog', () => {
     expect(screen.getByText(/22MB/)).toBeInTheDocument();
   });
 
-  it('shows Download and Cancel buttons', () => {
+  it('shows Download and Close buttons', () => {
     render(<ModelDownloadDialog {...defaultProps} />);
     expect(screen.getByRole('button', { name: /download/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /close/i }).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('calls onCancel when Cancel is clicked', () => {
+  it('calls onCancel when Close is clicked', () => {
     render(<ModelDownloadDialog {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    // The footer Close button is the first one that is a visible (non-sr-only) text button
+    const closeButtons = screen.getAllByRole('button', { name: /close/i });
+    const footerClose = closeButtons.find((btn) => btn.textContent?.trim() === 'Close');
+    fireEvent.click(footerClose!);
     expect(defaultProps.onCancel).toHaveBeenCalledOnce();
   });
 

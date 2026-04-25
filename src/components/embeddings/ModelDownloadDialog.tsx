@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,9 @@ export function ModelDownloadDialog({
   const [percentage, setPercentage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const onDownloadCompleteRef = useRef(onDownloadComplete);
+  useEffect(() => { onDownloadCompleteRef.current = onDownloadComplete; });
+
   useEffect(() => {
     if (!open) {
       setIsDownloading(false);
@@ -54,15 +57,18 @@ export function ModelDownloadDialog({
         } else if (progress.status === 'complete') {
           setPercentage(100);
           setIsDownloading(false);
-          onDownloadComplete();
+          onDownloadCompleteRef.current();
         } else if (progress.status === 'error') {
           setError(progress.error ?? 'Download failed');
           setIsDownloading(false);
+        } else if (progress.status === 'cancelled') {
+          setIsDownloading(false);
+          onCancel();
         }
       }
     );
     return cleanup;
-  }, [modelId, onDownloadComplete]);
+  }, [modelId, onCancel]);
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -118,8 +124,8 @@ export function ModelDownloadDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={false}>
-            {isDownloading ? 'Cancel' : 'Cancel'}
+          <Button variant="outline" onClick={handleCancel}>
+            {isDownloading ? 'Cancel' : 'Close'}
           </Button>
           <Button
             onClick={handleDownload}
