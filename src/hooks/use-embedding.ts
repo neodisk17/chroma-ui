@@ -195,6 +195,34 @@ export function useModelDownloadProgress() {
 }
 
 /**
+ * Hook to download a local embedding model
+ */
+export function useDownloadModel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (modelId: string): Promise<{ modelId: string; status: string }> => {
+      const response = await window.electronAPI.invoke<{ modelId: string; status: string }>(
+        IPC_CHANNELS.MODEL_DOWNLOAD,
+        { modelId }
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to download model');
+      }
+
+      return response.data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['embedding', 'available-models'] });
+    },
+    onError: (error) => {
+      toast.error(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    },
+  });
+}
+
+/**
  * Hook to warm up (pre-download) an embedding model.
  * This triggers model initialization and download before actual use.
  */

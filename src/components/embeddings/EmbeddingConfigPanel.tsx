@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, CheckCircle2, Key, Loader2, TestTube } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Download, Key, Loader2, TestTube } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -19,6 +19,7 @@ import {
   useOpenAIKeyStatus,
   useSaveOpenAIKey,
   useAvailableModels,
+  useDownloadModel,
   useTestEmbedding,
   useModelDownloadProgress,
 } from '../../hooks/use-embedding';
@@ -52,7 +53,8 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   // Queries and mutations
   const { isLoading: isCheckingKey } = useOpenAIKeyStatus();
   const saveApiKey = useSaveOpenAIKey();
-  const { data: modelsData, isLoading: isLoadingModels } = useAvailableModels();
+  const { data: modelsData, isLoading: isLoadingModels, refetch: refetchModels } = useAvailableModels();
+  const downloadModel = useDownloadModel();
   const testEmbedding = useTestEmbedding();
   const downloadProgressMap = useModelDownloadProgress();
   const downloadProgress = Object.values(downloadProgressMap).find(
@@ -74,6 +76,11 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   const handleTestEmbedding = () => {
     const config = buildEmbeddingConfig();
     testEmbedding.mutate({ config });
+  };
+
+  const handleDownload = async (modelId: string) => {
+    await downloadModel.mutateAsync(modelId);
+    refetchModels();
   };
 
   const availableModels = Array.isArray(modelsData) ? modelsData : [];
@@ -107,34 +114,61 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
         <div className="space-y-4 rounded-lg border p-4">
           <div className="space-y-2">
             <Label>Model</Label>
-            <Select
-              value={localConfig.model}
-              onValueChange={(value) => {
-                setLocalModel(value);
-                onConfigChange?.();
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingModels ? (
-                  <SelectItem value="_loading" disabled>
-                    Loading models...
-                  </SelectItem>
-                ) : availableModels.length === 0 ? (
-                  <SelectItem value="_empty" disabled>
-                    No models available
-                  </SelectItem>
-                ) : (
-                  availableModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name} ({model.dimensions}d, {model.sizeLabel})
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            {isLoadingModels ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading models...
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableModels.map((model) => {
+                  const progress = downloadProgressMap[model.id];
+                  const isActivelyDownloading = progress?.status === 'downloading';
+                  const isSelected = localConfig.model === model.id;
+                  return (
+                    <div
+                      key={model.id}
+                      className={`flex items-center justify-between p-2 rounded border cursor-pointer transition-colors ${
+                        isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => { setLocalModel(model.id); onConfigChange?.(); }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{model.name}</span>
+                          {model.isDefault && (
+                            <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                              ChromaDB Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{model.sizeLabel} · {model.dimensions}d</p>
+                        {isActivelyDownloading && (
+                          <Progress value={progress.percentage} className="h-1 mt-1 w-32" />
+                        )}
+                      </div>
+                      <div className="ml-2 shrink-0">
+                        {model.isDownloaded ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : isActivelyDownloading ? (
+                          <span className="text-xs text-muted-foreground">{progress.percentage}%</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => { e.stopPropagation(); handleDownload(model.id); }}
+                            disabled={downloadModel.isPending}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            {model.sizeLabel}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
