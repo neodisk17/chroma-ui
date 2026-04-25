@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,6 +6,16 @@ import { Loader2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateCollection, useUpdateCollection } from '../../hooks/use-chromadb';
 import { useWarmupModel, useModelDownloadProgress, useCollectionOpenAIKeyStatus } from '../../hooks/use-embedding';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +40,7 @@ import { Progress } from '../ui/progress';
 import { EmbeddingConfigPanel } from '../embeddings/EmbeddingConfigPanel';
 import { CollectionApiKeyPanel } from '../embeddings/CollectionApiKeyPanel';
 import { useEmbeddingStore } from '../../stores/embedding-store';
-import type { Collection, DistanceFunction } from '../../../shared/schemas';
+import type { Collection, DistanceFunction, EmbeddingConfig } from '../../../shared/schemas';
 
 // Form schema
 const formSchema = z.object({
@@ -57,9 +67,14 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
   const [isEmbeddingOpen, setIsEmbeddingOpen] = useState(false);
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
+  const [showModelChangeWarning, setShowModelChangeWarning] = useState(false);
+  const [pendingConfig, setPendingConfig] = useState<EmbeddingConfig | null>(null);
+
+  // Track the original model when the dialog opened (for create mode)
+  const originalModelRef = useRef<string>('');
 
   // Get embedding config from store
-  const { buildEmbeddingConfig, resetToDefaults, selectedProvider, hasOpenAIKey } =
+  const { buildEmbeddingConfig, resetToDefaults, selectedProvider, hasOpenAIKey, localConfig } =
     useEmbeddingStore();
 
   // Model warmup and download progress
@@ -130,13 +145,17 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
       setMetadataError(null);
       setIsEmbeddingOpen(false);
       setIsWarmingUp(false);
+      setShowModelChangeWarning(false);
+      setPendingConfig(null);
       // Reset embedding config to defaults when opening create dialog
       if (!isEditMode) {
         resetToDefaults();
         setIsApiKeyOpen(false);
+        // Capture the original model at dialog open time (after resetToDefaults)
+        originalModelRef.current = localConfig.model;
       }
     }
-  }, [open, collection, reset, isEditMode, resetToDefaults]);
+  }, [open, collection, reset, isEditMode, resetToDefaults, localConfig.model]);
 
   // Auto-expand API key section if collection has an OpenAI key
   useEffect(() => {
@@ -212,6 +231,7 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
     (selectedProvider !== 'openai' || hasOpenAIKey);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"
@@ -390,5 +410,37 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
         </form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showModelChangeWarning} onOpenChange={setShowModelChangeWarning}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Change embedding model?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This collection already has <strong>{collection?.count ?? 0}</strong> documents embedded
+            with the current model. Changing the model will make existing and new documents
+            incompatible for similarity search. Existing documents will not be re-embedded
+            automatically.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setPendingConfig(null)}>
+            Keep current model
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingConfig) {
+                // Apply the pending config change
+              }
+              setPendingConfig(null);
+              setShowModelChangeWarning(false);
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Change anyway
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
