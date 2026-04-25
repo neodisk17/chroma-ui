@@ -31,7 +31,6 @@ function MainLayout() {
         {/* Header */}
         <Header
           onNewConnection={() => setShowConnectionDialog(true)}
-          onNewCollection={() => setShowCollectionDialog(true)}
         />
 
         {/* Page content */}

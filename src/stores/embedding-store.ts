@@ -32,9 +32,6 @@ interface EmbeddingState {
   openaiConfig: OpenAIEmbeddingConfig;
   huggingfaceConfig: HuggingFaceEmbeddingConfig;
 
-  // Computed: the currently-active config
-  selectedEmbeddingConfig: EmbeddingConfig;
-
   // API key status (cached)
   hasOpenAIKey: boolean;
 
@@ -62,10 +59,9 @@ export const useEmbeddingStore = create<EmbeddingState>()(
     (set, get) => ({
       // Initial state
       selectedProvider: 'local',
-      localConfig: DEFAULT_EMBEDDING_CONFIG as LocalEmbeddingConfig,
+      localConfig: DEFAULT_EMBEDDING_CONFIG,
       openaiConfig: DEFAULT_OPENAI_CONFIG,
       huggingfaceConfig: DEFAULT_HUGGINGFACE_CONFIG,
-      selectedEmbeddingConfig: DEFAULT_EMBEDDING_CONFIG as EmbeddingConfig,
       hasOpenAIKey: false,
       downloadProgress: {},
 
@@ -126,10 +122,9 @@ export const useEmbeddingStore = create<EmbeddingState>()(
       resetToDefaults: () =>
         set({
           selectedProvider: 'local',
-          localConfig: DEFAULT_EMBEDDING_CONFIG as LocalEmbeddingConfig,
+          localConfig: DEFAULT_EMBEDDING_CONFIG,
           openaiConfig: DEFAULT_OPENAI_CONFIG,
           huggingfaceConfig: DEFAULT_HUGGINGFACE_CONFIG,
-          selectedEmbeddingConfig: DEFAULT_EMBEDDING_CONFIG as EmbeddingConfig,
           downloadProgress: {},
         }),
     }),

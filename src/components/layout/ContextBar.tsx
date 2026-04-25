@@ -8,10 +8,9 @@ import { CollectionDialog } from '@/components/collections/CollectionDialog';
 
 interface ContextBarProps {
   onNewConnection: () => void;
-  onNewCollection: () => void;
 }
 
-export function ContextBar({ onNewConnection, onNewCollection: _onNewCollection }: ContextBarProps) {
+export function ContextBar({ onNewConnection }: ContextBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { collectionId } = useParams<{ collectionId: string }>();

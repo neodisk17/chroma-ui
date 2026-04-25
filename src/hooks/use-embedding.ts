@@ -176,16 +176,20 @@ export function useTestEmbedding() {
  * Hook to listen for model download progress
  */
 export function useModelDownloadProgress() {
-  const setDownloadProgress = useEmbeddingStore((state) => state.setDownloadProgress);
+  const { setDownloadProgress, clearDownloadProgress } = useEmbeddingStore();
 
   useEffect(() => {
     const cleanup = window.electronAPI.onModelDownloadProgress((progress: unknown) => {
       const p = progress as ModelDownloadProgress;
-      setDownloadProgress(p.modelId, p);
+      if (p.status === 'complete' || p.status === 'error' || p.status === 'cancelled') {
+        clearDownloadProgress(p.modelId);
+      } else {
+        setDownloadProgress(p.modelId, p);
+      }
     });
 
     return cleanup;
-  }, [setDownloadProgress]);
+  }, [setDownloadProgress, clearDownloadProgress]);
 
   return useEmbeddingStore((state) => state.downloadProgress);
 }

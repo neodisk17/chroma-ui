@@ -10,10 +10,9 @@ const routeTitles: Record<string, string> = {
 
 interface HeaderProps {
   onNewConnection: () => void;
-  onNewCollection: () => void;
 }
 
-function Header({ onNewConnection, onNewCollection }: HeaderProps) {
+function Header({ onNewConnection }: HeaderProps) {
   const location = useLocation();
 
   // Get the current page title based on the route
@@ -49,7 +48,6 @@ function Header({ onNewConnection, onNewCollection }: HeaderProps) {
       {/* Context Bar - replaces ConnectionStatus */}
       <ContextBar
         onNewConnection={onNewConnection}
-        onNewCollection={onNewCollection}
       />
     </header>
   );
