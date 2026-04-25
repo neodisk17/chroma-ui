@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "ChromaDB Desktop UI - Electron + React + TypeScript",
   "main": "dist-electron/main.js",
+  "homepage": "https://request-wala.whisperyourwish.com/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neodisk17/chroma-ui.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -11,9 +16,9 @@
     "build:linux": "npm run build && electron-builder --linux",
     "build:all": "npm run build && electron-builder --mac --win --linux",
     "build:publish": "npm run build && electron-builder --mac --win --linux --publish always",
-    "build:docker:win": "docker compose run --rm electron-builder-win",
-    "build:docker:linux": "docker compose run --rm electron-builder-linux",
-    "build:docker:all": "docker compose up electron-builder-win electron-builder-linux",
+    "build:docker:win": "docker compose build --no-cache electron-builder-win && docker compose run --rm electron-builder-win",
+    "build:docker:linux": "docker compose build --no-cache electron-builder-linux && docker compose run --rm electron-builder-linux",
+    "build:docker:all": "docker compose build --no-cache && docker compose up electron-builder-win electron-builder-linux",
     "start": "cross-env NODE_ENV=production electron .",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -57,6 +62,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-query": "^5.90.16",
+    "@xenova/transformers": "^2.17.2",
     "ag-grid-community": "^35.0.0",
     "ag-grid-react": "^35.0.0",
     "chromadb": "^3.2.0",

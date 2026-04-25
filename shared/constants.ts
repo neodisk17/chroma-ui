@@ -22,6 +22,9 @@ export const IPC_CHANNELS = {
   COLLECTION_CREATE: 'collection:create',
   COLLECTION_UPDATE: 'collection:update',
   COLLECTION_DELETE: 'collection:delete',
+  COLLECTION_SET_API_KEY: 'collection:set-api-key',
+  COLLECTION_GET_API_KEY_STATUS: 'collection:get-api-key-status',
+  COLLECTION_DELETE_API_KEY: 'collection:delete-api-key',
 
   DOCUMENT_QUERY: 'document:query',
   DOCUMENT_GET: 'document:get',
@@ -47,6 +50,9 @@ export const IPC_CHANNELS = {
   EMBEDDING_IS_READY: 'embedding:is-ready',
   MODEL_LIST_AVAILABLE: 'model:list-available',
   MODEL_DOWNLOAD_PROGRESS: 'model:download-progress',
+  MODEL_DOWNLOAD: 'model:download',
+  MODEL_CANCEL_DOWNLOAD: 'model:cancel-download',
+  MODEL_CHECK_INTEGRITY: 'model:check-integrity',
 } as const;
 
 // Window dimensions
