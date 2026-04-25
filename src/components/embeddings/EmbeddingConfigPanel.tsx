@@ -53,7 +53,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   // Queries and mutations
   const { isLoading: isCheckingKey } = useOpenAIKeyStatus();
   const saveApiKey = useSaveOpenAIKey();
-  const { data: modelsData, isLoading: isLoadingModels, refetch: refetchModels } = useAvailableModels();
+  const { data: modelsData, isLoading: isLoadingModels } = useAvailableModels();
   const downloadModel = useDownloadModel();
   const testEmbedding = useTestEmbedding();
   const downloadProgressMap = useModelDownloadProgress();
@@ -79,8 +79,11 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   };
 
   const handleDownload = async (modelId: string) => {
-    await downloadModel.mutateAsync(modelId);
-    refetchModels();
+    try {
+      await downloadModel.mutateAsync(modelId);
+    } catch {
+      // error already surfaced by useDownloadModel.onError toast
+    }
   };
 
   const availableModels = Array.isArray(modelsData) ? modelsData : [];
@@ -143,21 +146,21 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">{model.sizeLabel} · {model.dimensions}d</p>
-                        {isActivelyDownloading && (
+                        {isActivelyDownloading && progress && (
                           <Progress value={progress.percentage} className="h-1 mt-1 w-32" />
                         )}
                       </div>
                       <div className="ml-2 shrink-0">
                         {model.isDownloaded ? (
                           <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        ) : isActivelyDownloading ? (
+                        ) : isActivelyDownloading && progress ? (
                           <span className="text-xs text-muted-foreground">{progress.percentage}%</span>
                         ) : (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={(e) => { e.stopPropagation(); handleDownload(model.id); }}
-                            disabled={downloadModel.isPending}
+                            disabled={isActivelyDownloading}
                           >
                             <Download className="h-3 w-3 mr-1" />
                             {model.sizeLabel}
