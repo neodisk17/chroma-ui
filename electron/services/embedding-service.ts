@@ -2,55 +2,63 @@ import * as keytar from 'keytar';
 import type { EmbeddingFunction } from 'chromadb';
 import type {
   EmbeddingConfig,
-  DefaultEmbeddingConfig,
   OpenAIEmbeddingConfig,
   HuggingFaceEmbeddingConfig,
-  HuggingFaceModelInfo,
+  HuggingFaceModelPreset,
   TestEmbeddingResponse,
-  ModelDownloadProgress,
 } from '../../shared/schemas';
 import { EmbeddingConfigSchema } from '../../shared/schemas';
-import { BrowserWindow } from 'electron';
+import { localModelService } from './local-model-service';
 
 const SERVICE_NAME = 'chromadb-ui-embeddings';
 const OPENAI_KEY_ACCOUNT = 'openai-api-key';
+const HUGGINGFACE_KEY_ACCOUNT = 'huggingface-api-key';
 
-// Predefined HuggingFace models
-const PREDEFINED_MODELS: HuggingFaceModelInfo[] = [
+/**
+ * Generate collection-specific key account name
+ */
+function getCollectionKeyAccount(collectionName: string): string {
+  return `${OPENAI_KEY_ACCOUNT}:collection:${collectionName}`;
+}
+
+// Predefined HuggingFace models (popular models on HuggingFace Inference API)
+export const HUGGINGFACE_MODEL_PRESETS: HuggingFaceModelPreset[] = [
   {
-    id: 'Xenova/all-MiniLM-L6-v2',
+    id: 'sentence-transformers/all-MiniLM-L6-v2',
     name: 'MiniLM L6 v2',
     dimensions: 384,
-    size: '90MB',
     description: 'Fast and lightweight model, good for general use',
   },
   {
-    id: 'Xenova/all-mpnet-base-v2',
+    id: 'sentence-transformers/all-mpnet-base-v2',
     name: 'MPNet Base v2',
     dimensions: 768,
-    size: '420MB',
     description: 'High-quality embeddings, balanced performance',
   },
   {
-    id: 'Xenova/bge-small-en-v1.5',
+    id: 'BAAI/bge-small-en-v1.5',
     name: 'BGE Small EN',
     dimensions: 384,
-    size: '130MB',
     description: 'Optimized for retrieval tasks, English only',
   },
   {
-    id: 'Xenova/bge-base-en-v1.5',
-    name: 'BGE Base EN',
-    dimensions: 768,
-    size: '440MB',
-    description: 'High-quality retrieval model, English only',
+    id: 'intfloat/e5-small-v2',
+    name: 'E5 Small v2',
+    dimensions: 384,
+    description: 'Multilingual capable, good for search',
+  },
+  {
+    id: 'intfloat/multilingual-e5-small',
+    name: 'Multilingual E5 Small',
+    dimensions: 384,
+    description: 'Supports 100+ languages',
   },
 ];
 
 /**
  * OpenAI Embedding Function implementation
  */
-class OpenAEmbeddingFunction implements EmbeddingFunction {
+class OpenAIEmbeddingFunction implements EmbeddingFunction {
   private apiKey: string;
   private model: string;
   private dimensions?: number;
@@ -93,75 +101,69 @@ class OpenAEmbeddingFunction implements EmbeddingFunction {
 }
 
 /**
- * Default Embedding Function using @chroma-core/default-embed
+ * HuggingFace Inference API Embedding Function implementation
  */
-class DefaultEmbedFunction implements EmbeddingFunction {
-  private embedder: { generate: (texts: string[]) => Promise<number[][]> } | null = null;
+class HuggingFaceInferenceEmbeddingFunction implements EmbeddingFunction {
+  private apiKey: string;
   private modelId: string;
-  private dtype: string;
-  private initPromise: Promise<void> | null = null;
-  private progressCallback?: (progress: ModelDownloadProgress) => void;
 
-  constructor(
-    modelId: string,
-    dtype: string,
-    progressCallback?: (progress: ModelDownloadProgress) => void
-  ) {
+  constructor(apiKey: string, modelId: string) {
+    this.apiKey = apiKey;
     this.modelId = modelId;
-    this.dtype = dtype;
-    this.progressCallback = progressCallback;
-  }
-
-  private async initialize(): Promise<void> {
-    if (this.embedder) return;
-    if (this.initPromise) {
-      await this.initPromise;
-      return;
-    }
-
-    this.initPromise = (async () => {
-      try {
-        this.progressCallback?.({
-          modelId: this.modelId,
-          status: 'downloading',
-          progress: 0,
-        });
-
-        // Dynamic import to handle ESM module
-        const { DefaultEmbeddingFunction } = await import('@chroma-core/default-embed');
-
-        // Create instance with model configuration
-        const embedFn = new DefaultEmbeddingFunction({
-          modelName: this.modelId,
-          dtype: this.dtype as 'fp32' | 'fp16' | 'q8' | 'int8',
-        });
-
-        this.embedder = embedFn;
-
-        this.progressCallback?.({
-          modelId: this.modelId,
-          status: 'completed',
-          progress: 100,
-        });
-      } catch (error) {
-        this.progressCallback?.({
-          modelId: this.modelId,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-        throw error;
-      }
-    })();
-
-    await this.initPromise;
   }
 
   async generate(texts: string[]): Promise<number[][]> {
-    await this.initialize();
-    if (!this.embedder) {
-      throw new Error('Embedder not initialized');
+    const url = `https://api-inference.huggingface.co/pipeline/feature-extraction/${this.modelId}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        inputs: texts,
+        options: {
+          wait_for_model: true,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        `HuggingFace API error: ${response.status} - ${error.error || 'Unknown error'}`
+      );
     }
-    return this.embedder.generate(texts);
+
+    const data = await response.json();
+
+    // Handle nested arrays (some models return [[embedding]] for single input)
+    // The API returns either number[][] or number[][][] depending on input
+    if (Array.isArray(data) && data.length > 0) {
+      // Check if it's 3D array (model returns [batch, tokens, embedding])
+      // For sentence embeddings, we typically want mean pooling
+      if (Array.isArray(data[0]) && Array.isArray(data[0][0])) {
+        // 3D array: perform mean pooling over token dimension
+        return data.map((tokenEmbeddings: number[][]) => {
+          const numTokens = tokenEmbeddings.length;
+          const embeddingDim = tokenEmbeddings[0].length;
+          const pooled = new Array(embeddingDim).fill(0);
+
+          for (const tokenEmb of tokenEmbeddings) {
+            for (let i = 0; i < embeddingDim; i++) {
+              pooled[i] += tokenEmb[i];
+            }
+          }
+
+          return pooled.map((val) => val / numTokens);
+        });
+      }
+      // 2D array: already in correct format
+      return data as number[][];
+    }
+
+    throw new Error('Unexpected response format from HuggingFace API');
   }
 }
 
@@ -169,24 +171,11 @@ class DefaultEmbedFunction implements EmbeddingFunction {
  * EmbeddingService - Singleton service for managing embedding functions
  */
 export class EmbeddingService {
-  private mainWindow: BrowserWindow | null = null;
   private activeEmbedders: Map<string, EmbeddingFunction> = new Map();
 
-  /**
-   * Set the main window reference for IPC communication
-   */
-  setMainWindow(window: BrowserWindow): void {
-    this.mainWindow = window;
-  }
-
-  /**
-   * Send download progress to renderer
-   */
-  private sendProgress(progress: ModelDownloadProgress): void {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send('model:download-progress', progress);
-    }
-  }
+  // ============================================================================
+  // OpenAI API Key Management
+  // ============================================================================
 
   /**
    * Store OpenAI API key in OS keychain
@@ -233,20 +222,154 @@ export class EmbeddingService {
     }
   }
 
+  // ============================================================================
+  // Collection-Specific OpenAI API Key Management
+  // ============================================================================
+
   /**
-   * Get list of available HuggingFace models
+   * Store collection-specific OpenAI API key in OS keychain
    */
-  getAvailableModels(): HuggingFaceModelInfo[] {
-    return PREDEFINED_MODELS;
+  async setCollectionOpenAIApiKey(collectionName: string, apiKey: string): Promise<void> {
+    try {
+      const account = getCollectionKeyAccount(collectionName);
+      await keytar.setPassword(SERVICE_NAME, account, apiKey);
+    } catch (error) {
+      throw new Error(
+        `Failed to save collection OpenAI API key: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Retrieve collection-specific OpenAI API key from OS keychain
+   */
+  async getCollectionOpenAIApiKey(collectionName: string): Promise<string | null> {
+    try {
+      const account = getCollectionKeyAccount(collectionName);
+      return await keytar.getPassword(SERVICE_NAME, account);
+    } catch (error) {
+      console.error(`Failed to retrieve collection OpenAI API key for ${collectionName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if collection-specific OpenAI API key exists
+   */
+  async hasCollectionOpenAIApiKey(collectionName: string): Promise<boolean> {
+    const key = await this.getCollectionOpenAIApiKey(collectionName);
+    return key !== null && key.length > 0;
+  }
+
+  /**
+   * Delete collection-specific OpenAI API key from OS keychain
+   */
+  async deleteCollectionOpenAIApiKey(collectionName: string): Promise<boolean> {
+    try {
+      const account = getCollectionKeyAccount(collectionName);
+      return await keytar.deletePassword(SERVICE_NAME, account);
+    } catch (error) {
+      console.error(`Failed to delete collection OpenAI API key for ${collectionName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get OpenAI API key for a collection with fallback logic
+   * Priority: collection-specific key → global key → error
+   */
+  async getOpenAIApiKeyForCollection(collectionName?: string): Promise<string> {
+    // Try collection-specific key first if collection name is provided
+    if (collectionName) {
+      const collectionKey = await this.getCollectionOpenAIApiKey(collectionName);
+      if (collectionKey) {
+        return collectionKey;
+      }
+    }
+
+    // Fall back to global key
+    const globalKey = await this.getOpenAIApiKey();
+    if (globalKey) {
+      return globalKey;
+    }
+
+    // No key available
+    throw new Error('OpenAI API key not configured. Please set your API key first.');
+  }
+
+  // ============================================================================
+  // HuggingFace API Key Management
+  // ============================================================================
+
+  /**
+   * Store HuggingFace API key in OS keychain
+   */
+  async setHuggingFaceApiKey(apiKey: string): Promise<void> {
+    try {
+      await keytar.setPassword(SERVICE_NAME, HUGGINGFACE_KEY_ACCOUNT, apiKey);
+    } catch (error) {
+      throw new Error(
+        `Failed to save HuggingFace API key: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Retrieve HuggingFace API key from OS keychain
+   */
+  async getHuggingFaceApiKey(): Promise<string | null> {
+    try {
+      return await keytar.getPassword(SERVICE_NAME, HUGGINGFACE_KEY_ACCOUNT);
+    } catch (error) {
+      console.error('Failed to retrieve HuggingFace API key:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if HuggingFace API key exists
+   */
+  async hasHuggingFaceApiKey(): Promise<boolean> {
+    const key = await this.getHuggingFaceApiKey();
+    return key !== null && key.length > 0;
+  }
+
+  /**
+   * Delete HuggingFace API key from OS keychain
+   */
+  async deleteHuggingFaceApiKey(): Promise<boolean> {
+    try {
+      return await keytar.deletePassword(SERVICE_NAME, HUGGINGFACE_KEY_ACCOUNT);
+    } catch (error) {
+      console.error('Failed to delete HuggingFace API key:', error);
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // Embedding Function Creation
+  // ============================================================================
+
+  /**
+   * Get list of available HuggingFace model presets
+   */
+  getModelPresets(): HuggingFaceModelPreset[] {
+    return HUGGINGFACE_MODEL_PRESETS;
   }
 
   /**
    * Create an embedding function from configuration
+   * @param config - Embedding configuration
+   * @param collectionName - Optional collection name for collection-specific key resolution
    */
-  async createEmbeddingFunction(config: EmbeddingConfig): Promise<EmbeddingFunction> {
+  async createEmbeddingFunction(
+    config: EmbeddingConfig,
+    collectionName?: string
+  ): Promise<EmbeddingFunction> {
     // Validate config
     const parsed = EmbeddingConfigSchema.parse(config);
-    const cacheKey = JSON.stringify(parsed);
+    // Include collection name in cache key to support collection-specific keys
+    const cacheKey = JSON.stringify({ config: parsed, collection: collectionName });
 
     // Check cache
     const cached = this.activeEmbedders.get(cacheKey);
@@ -257,13 +380,20 @@ export class EmbeddingService {
     let embedder: EmbeddingFunction;
 
     switch (parsed.provider) {
+      case 'local': {
+        const localConfig = parsed as any; // Local embeddings don't have a specific config type yet
+        embedder = await localModelService.createLocalEmbeddingFunction(
+          localConfig.model,
+          localConfig.dtype
+        );
+        break;
+      }
+
       case 'openai': {
         const openaiConfig = parsed as OpenAIEmbeddingConfig;
-        const apiKey = await this.getOpenAIApiKey();
-        if (!apiKey) {
-          throw new Error('OpenAI API key not configured. Please set your API key first.');
-        }
-        embedder = new OpenAEmbeddingFunction(
+        // Use fallback logic: collection key → global key → error
+        const apiKey = await this.getOpenAIApiKeyForCollection(collectionName);
+        embedder = new OpenAIEmbeddingFunction(
           apiKey,
           openaiConfig.model,
           openaiConfig.dimensions
@@ -273,24 +403,16 @@ export class EmbeddingService {
 
       case 'huggingface': {
         const hfConfig = parsed as HuggingFaceEmbeddingConfig;
-        embedder = new DefaultEmbedFunction(
-          hfConfig.model,
-          hfConfig.dtype,
-          (progress) => this.sendProgress(progress)
-        );
+        const apiKey = await this.getHuggingFaceApiKey();
+        if (!apiKey) {
+          throw new Error('HuggingFace API key not configured. Please set your API key first.');
+        }
+        embedder = new HuggingFaceInferenceEmbeddingFunction(apiKey, hfConfig.model);
         break;
       }
 
-      case 'default':
-      default: {
-        const defaultConfig = parsed as DefaultEmbeddingConfig;
-        embedder = new DefaultEmbedFunction(
-          defaultConfig.model,
-          defaultConfig.dtype,
-          (progress) => this.sendProgress(progress)
-        );
-        break;
-      }
+      default:
+        throw new Error(`Unknown embedding provider: ${(parsed as { provider: string }).provider}`);
     }
 
     // Cache the embedder
@@ -335,39 +457,6 @@ export class EmbeddingService {
    */
   clearCache(): void {
     this.activeEmbedders.clear();
-  }
-
-  /**
-   * Check if a model is ready (cached and initialized)
-   * For OpenAI, this checks if API key exists
-   * For local models, this checks if the embedder is already cached
-   */
-  isModelReady(config: EmbeddingConfig): boolean {
-    if (config.provider === 'openai') {
-      // OpenAI is "ready" if we have the API key (actual check is async)
-      return false; // Need to call hasOpenAIApiKey() for accurate result
-    }
-
-    const cacheKey = JSON.stringify(config);
-    return this.activeEmbedders.has(cacheKey);
-  }
-
-  /**
-   * Pre-download/warm up a model by initializing it and generating a test embedding.
-   * This ensures the model is downloaded and ready for use before actual operations.
-   */
-  async warmupModel(config: EmbeddingConfig): Promise<{ success: boolean; error?: string }> {
-    try {
-      const embedder = await this.createEmbeddingFunction(config);
-      // Trigger initialization by generating a test embedding
-      await embedder.generate(['warmup test']);
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error during model warmup',
-      };
-    }
   }
 }
 
