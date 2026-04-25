@@ -1,11 +1,14 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { z } from 'zod';
 import { embeddingService } from '../services/embedding-service';
+import { localModelService } from '../services/local-model-service';
 import {
   EmbeddingConfigSchema,
   TestEmbeddingRequestSchema,
   type ApiKeyStatus,
+  type AvailableModel,
   type AvailableModelsResponse,
+  type ModelDownloadProgress,
   type TestEmbeddingResponse,
 } from '../../shared/schemas';
 import {
@@ -124,14 +127,14 @@ export function registerEmbeddingHandlers(): void {
   );
 
   // ============================================================================
-  // model:list-available - Get available HuggingFace models
+  // model:list-available - Get available HuggingFace models + download status
   // ============================================================================
   ipcMain.handle(
     'model:list-available',
-    async (): Promise<IpcResponse<AvailableModelsResponse>> => {
+    async (): Promise<IpcResponse<AvailableModel[]>> => {
       try {
-        const models = embeddingService.getAvailableModels();
-        return successResponse({ models });
+        const models = await localModelService.listAvailableModels();
+        return successResponse(models);
       } catch (error) {
         return handleError(error, 'model:list-available', 'Failed to list models');
       }
@@ -179,6 +182,71 @@ export function registerEmbeddingHandlers(): void {
         return successResponse({ ready });
       } catch (error) {
         return handleError(error, 'embedding:is-ready', 'Failed to check model status');
+      }
+    }
+  );
+
+  // ============================================================
+  // model:check-integrity — verify model files are intact
+  // ============================================================
+  ipcMain.handle(
+    'model:check-integrity',
+    async (_, requestData: { modelId: string }): Promise<IpcResponse<boolean>> => {
+      try {
+        const intact = localModelService.checkModelIntegrity(requestData.modelId);
+        return successResponse(intact);
+      } catch (error) {
+        return handleError(error, 'model:check-integrity', 'Failed to check model integrity');
+      }
+    }
+  );
+
+  // ============================================================
+  // model:download — download a model with progress events
+  // ============================================================
+  ipcMain.handle(
+    'model:download',
+    async (
+      _,
+      requestData: { modelId: string }
+    ): Promise<IpcResponse<{ modelId: string; status: string }>> => {
+      try {
+        const win = BrowserWindow.getAllWindows()[0];
+
+        await localModelService.downloadModel(requestData.modelId, (progress: ModelDownloadProgress) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('model:download-progress', progress);
+          }
+        });
+
+        return successResponse({ modelId: requestData.modelId, status: 'complete' });
+      } catch (error) {
+        await localModelService.cleanPartialDownload(requestData.modelId);
+        return handleError(error, 'model:download', 'Failed to download model');
+      }
+    }
+  );
+
+  // ============================================================
+  // model:cancel-download — send cancelled event to renderer
+  // (transformers.js has no true cancellation; we notify UI only)
+  // ============================================================
+  ipcMain.handle(
+    'model:cancel-download',
+    async (_, requestData: { modelId: string }): Promise<IpcResponse<{ cancelled: boolean }>> => {
+      try {
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win && !win.isDestroyed()) {
+          const cancelledProgress: ModelDownloadProgress = {
+            modelId: requestData.modelId,
+            percentage: 0,
+            status: 'cancelled',
+          };
+          win.webContents.send('model:download-progress', cancelledProgress);
+        }
+        return successResponse({ cancelled: true });
+      } catch (error) {
+        return handleError(error, 'model:cancel-download', 'Failed to cancel download');
       }
     }
   );
