@@ -72,7 +72,56 @@ vi.mock('../../../src/components/ui/select', () => ({
 
 vi.mock('lucide-react', () => ({
   Loader2: () => <span data-testid="loader" />,
+  Download: () => <span data-testid="download-icon" />,
 }));
+
+vi.mock('../../../src/components/ui/alert-dialog', () => ({
+  AlertDialog: ({ open, children }: any) => (open ? <div data-testid="alert-dialog">{children}</div> : null),
+  AlertDialogAction: ({ children, onClick }: any) => <button onClick={onClick} data-testid="alert-action">{children}</button>,
+  AlertDialogCancel: ({ children, onClick }: any) => <button onClick={onClick} data-testid="alert-cancel">{children}</button>,
+  AlertDialogContent: ({ children }: any) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: any) => <p>{children}</p>,
+  AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: any) => <h2>{children}</h2>,
+}));
+
+vi.mock('../../../src/components/ui/progress', () => ({
+  Progress: ({ value }: any) => <div data-testid="progress" data-value={value} />,
+}));
+
+vi.mock('../../../src/components/embeddings/CollectionApiKeyPanel', () => ({
+  CollectionApiKeyPanel: () => <div data-testid="collection-api-key-panel" />,
+}));
+
+vi.mock('../../../src/hooks/use-embedding', () => ({
+  useWarmupModel: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
+  useModelDownloadProgress: () => ({}),
+  useCollectionOpenAIKeyStatus: () => ({ data: null }),
+}));
+
+vi.mock('../../../src/components/ui/collapsible', () => ({
+  Collapsible: ({ children, open }: any) => <div data-testid="collapsible" data-open={open}>{children}</div>,
+  CollapsibleContent: ({ children }: any) => <div data-testid="collapsible-content">{children}</div>,
+  CollapsibleTrigger: ({ children }: any) => <div data-testid="collapsible-trigger">{children}</div>,
+}));
+
+vi.mock('../../../src/components/embeddings/EmbeddingConfigPanel', () => ({
+  EmbeddingConfigPanel: () => <div data-testid="embedding-config-panel">EmbeddingConfigPanel</div>,
+}));
+
+vi.mock('../../../src/stores/embedding-store', () => {
+  const state = {
+    buildEmbeddingConfig: () => ({ provider: 'local', model: 'Xenova/all-MiniLM-L6-v2', dtype: 'fp32' }),
+    resetToDefaults: () => {},
+    selectedProvider: 'local',
+    hasOpenAIKey: false,
+    localConfig: { model: 'Xenova/all-MiniLM-L6-v2', dtype: 'fp32' },
+    setProvider: () => {},
+  };
+  const useEmbeddingStore = Object.assign(() => state, { getState: () => state });
+  return { useEmbeddingStore };
+});
 
 describe('CollectionDialog', () => {
   const defaultProps = {
@@ -137,15 +186,15 @@ describe('CollectionDialog', () => {
     expect(nameInput).not.toBeDisabled();
   });
 
-  it('shows embedding function select in create mode', () => {
+  it('shows embedding configuration in create mode', () => {
     render(<CollectionDialog {...defaultProps} />);
-    expect(screen.getByText('Embedding Function')).toBeInTheDocument();
+    expect(screen.getByText(/Embedding Configuration/)).toBeInTheDocument();
   });
 
-  it('hides embedding function select in edit mode', () => {
+  it('hides embedding configuration in edit mode', () => {
     const collection = { name: 'test_col', metadata: {} };
     render(<CollectionDialog {...defaultProps} collection={collection} />);
-    expect(screen.queryByText('Embedding Function')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Embedding Configuration/)).not.toBeInTheDocument();
   });
 
   it('shows distance function select in create mode', () => {

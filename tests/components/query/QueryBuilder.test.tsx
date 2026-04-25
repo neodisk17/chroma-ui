@@ -11,6 +11,7 @@ const mockQueryStore = {
   isExecuting: false,
   error: null as string | null,
   clearQuery: vi.fn(),
+  setError: vi.fn(),
 };
 
 vi.mock('../../../src/stores/query-store', () => ({
@@ -24,6 +25,14 @@ vi.mock('../../../src/hooks/use-chromadb', () => ({
   useExecuteQuery: () => ({
     mutateAsync: mockMutateAsync,
   }),
+}));
+
+vi.mock('../../../src/hooks/use-embedding', () => ({
+  useAvailableModels: () => ({ data: [] }),
+}));
+
+vi.mock('../../../src/components/embeddings/ExternalCollectionConfigDialog', () => ({
+  ExternalCollectionConfigDialog: () => null,
 }));
 
 // Mock sub-components

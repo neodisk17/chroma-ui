@@ -90,6 +90,7 @@ vi.mock('lucide-react', () => ({
   Edit: () => <span data-testid="edit-icon" />,
   Trash2: () => <span data-testid="trash-icon" />,
   Info: () => <span data-testid="info-icon" />,
+  AlertCircle: () => <span data-testid="alert-circle-icon" />,
 }));
 
 describe('CollectionList', () => {
