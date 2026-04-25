@@ -36,17 +36,16 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   // Store state
   const {
     selectedProvider,
-    defaultConfig,
+    localConfig,
     openaiConfig,
     huggingfaceConfig,
     hasOpenAIKey,
     setProvider,
-    setDefaultModel,
-    setDefaultDType,
+    setLocalModel,
+    setLocalDType,
     setOpenAIModel,
     setOpenAIDimensions,
     setHuggingFaceModel,
-    setHuggingFaceDType,
     buildEmbeddingConfig,
   } = useEmbeddingStore();
 
@@ -55,7 +54,10 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   const saveApiKey = useSaveOpenAIKey();
   const { data: modelsData, isLoading: isLoadingModels } = useAvailableModels();
   const testEmbedding = useTestEmbedding();
-  const downloadProgress = useModelDownloadProgress();
+  const downloadProgressMap = useModelDownloadProgress();
+  const downloadProgress = Object.values(downloadProgressMap).find(
+    (p) => p.status === 'downloading'
+  );
 
   const handleProviderChange = (provider: string) => {
     setProvider(provider as EmbeddingProvider);
@@ -74,7 +76,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
     testEmbedding.mutate({ config });
   };
 
-  const availableModels = modelsData?.models || [];
+  const availableModels = Array.isArray(modelsData) ? modelsData : [];
 
   return (
     <div className="space-y-4">
@@ -86,13 +88,13 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
             <SelectValue placeholder="Select provider" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="default">Default (Local)</SelectItem>
+            <SelectItem value="local">Default (Local)</SelectItem>
             <SelectItem value="openai">OpenAI</SelectItem>
             <SelectItem value="huggingface">HuggingFace</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          {selectedProvider === 'default' &&
+          {selectedProvider === 'local' &&
             'Uses local transformer models via @chroma-core/default-embed'}
           {selectedProvider === 'openai' && 'Uses OpenAI embedding API (requires API key)'}
           {selectedProvider === 'huggingface' &&
@@ -100,15 +102,15 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
         </p>
       </div>
 
-      {/* Default Provider Config */}
-      {selectedProvider === 'default' && (
+      {/* Local Provider Config */}
+      {selectedProvider === 'local' && (
         <div className="space-y-4 rounded-lg border p-4">
           <div className="space-y-2">
             <Label>Model</Label>
             <Select
-              value={defaultConfig.model}
+              value={localConfig.model}
               onValueChange={(value) => {
-                setDefaultModel(value);
+                setLocalModel(value);
                 onConfigChange?.();
               }}
             >
@@ -127,7 +129,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
                 ) : (
                   availableModels.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
-                      {model.name} ({model.dimensions}d, {model.size})
+                      {model.name} ({model.dimensions}d, {model.sizeLabel})
                     </SelectItem>
                   ))
                 )}
@@ -138,9 +140,9 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
           <div className="space-y-2">
             <Label>Quantization</Label>
             <Select
-              value={defaultConfig.dtype}
+              value={localConfig.dtype}
               onValueChange={(value) => {
-                setDefaultDType(value as DType);
+                setLocalDType(value as DType);
                 onConfigChange?.();
               }}
             >
@@ -310,7 +312,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
                   ) : (
                     availableModels.map((model) => (
                       <SelectItem key={model.id} value={model.id}>
-                        {model.name} ({model.dimensions}d, {model.size})
+                        {model.name} ({model.dimensions}d, {model.sizeLabel})
                       </SelectItem>
                     ))
                   )}
@@ -356,32 +358,11 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
             <Badge variant="secondary">{huggingfaceConfig.model}</Badge>
           </div>
 
-          {/* Quantization */}
-          <div className="space-y-2">
-            <Label>Quantization</Label>
-            <Select
-              value={huggingfaceConfig.dtype}
-              onValueChange={(value) => {
-                setHuggingFaceDType(value as DType);
-                onConfigChange?.();
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fp32">FP32 (Full precision)</SelectItem>
-                <SelectItem value="fp16">FP16 (Half precision)</SelectItem>
-                <SelectItem value="q8">Q8 (8-bit quantized)</SelectItem>
-                <SelectItem value="int8">INT8 (Integer 8-bit)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       )}
 
       {/* Download Progress */}
-      {downloadProgress && downloadProgress.status === 'downloading' && (
+      {downloadProgress && (
         <div className="space-y-2 rounded-lg border p-4">
           <div className="flex items-center gap-2 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -389,7 +370,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
           </div>
           <Progress value={downloadProgress.percentage || 0} />
           <p className="text-xs text-muted-foreground">
-            {downloadProgress.percentage?.toFixed(0)}% complete
+            {downloadProgress.percentage.toFixed(0)}% complete
           </p>
         </div>
       )}

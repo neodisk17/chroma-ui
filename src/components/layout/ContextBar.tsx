@@ -1,24 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Database, ChevronDown, ChevronRight, FolderOpen, Plus, LogOut, List } from 'lucide-react';
+import { Database, ChevronRight, FolderOpen, Pencil, Plus } from 'lucide-react';
 import { useConnectionStore } from '@/stores/connection-store';
 import { useCollections } from '@/hooks/use-chromadb';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { CollectionDialog } from '@/components/collections/CollectionDialog';
 
 interface ContextBarProps {
   onNewConnection: () => void;
   onNewCollection: () => void;
 }
 
-export function ContextBar({ onNewConnection, onNewCollection }: ContextBarProps) {
+export function ContextBar({ onNewConnection, onNewCollection: _onNewCollection }: ContextBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { collectionId } = useParams<{ collectionId: string }>();
@@ -26,56 +19,32 @@ export function ContextBar({ onNewConnection, onNewCollection }: ContextBarProps
   const {
     connections,
     activeConnectionId,
-    connectToConnection,
-    disconnectFromConnection,
   } = useConnectionStore();
 
   const { data: collections = [] } = useCollections();
 
-  const [connectionSearch, setConnectionSearch] = useState('');
-  const [collectionSearch, setCollectionSearch] = useState('');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const activeConnection = connections.find((c) => c.id === activeConnectionId);
-  const isOnCollectionsRoute = location.pathname.includes('/collections');
 
-  // Filter connections by search
-  const filteredConnections = useMemo(() => {
-    if (!connectionSearch) return connections;
-    const search = connectionSearch.toLowerCase();
-    return connections.filter(
-      (c) =>
-        c.name.toLowerCase().includes(search) ||
-        c.host.toLowerCase().includes(search)
-    );
-  }, [connections, connectionSearch]);
+  // Route detection flags
+  const isHomePage = location.pathname === '/';
+  const isCollectionsPage = location.pathname === '/collections';
+  const isDocumentsPage = location.pathname.includes('/collections/') &&
+                          location.pathname.includes('/documents') &&
+                          !!collectionId;
 
-  // Filter collections by search
-  const filteredCollections = useMemo(() => {
-    if (!collectionSearch) return collections;
-    const search = collectionSearch.toLowerCase();
-    return collections.filter((c) => c.name.toLowerCase().includes(search));
-  }, [collections, collectionSearch]);
+  // Get the current collection object for editing
+  const currentCollection = collections.find((c) => c.name === collectionId);
 
-  const handleSwitchConnection = async (connectionId: string) => {
-    const success = await connectToConnection(connectionId);
-    if (success) {
+  const handleConnectionClick = () => {
+    navigate('/');
+  };
+
+  const handleCollectionsClick = () => {
+    if (isDocumentsPage) {
       navigate('/collections');
     }
-  };
-
-  const handleDisconnect = async () => {
-    if (activeConnection) {
-      await disconnectFromConnection(activeConnection.id);
-      navigate('/');
-    }
-  };
-
-  const handleSelectCollection = (collectionName: string) => {
-    navigate(`/collections/${collectionName}/documents`);
-  };
-
-  const handleViewAllCollections = () => {
-    navigate('/collections');
   };
 
   // Don't render if no active connection
@@ -98,138 +67,68 @@ export function ContextBar({ onNewConnection, onNewCollection }: ContextBarProps
     <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
       {/* Left: Breadcrumb navigation */}
       <div className="flex items-center gap-1">
-        {/* Connection Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1 font-medium">
-              <Database className="h-4 w-4 text-green-600" />
-              <span className="max-w-[150px] truncate">{activeConnection.name}</span>
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64">
-            {/* Search Input */}
-            <div className="p-2">
-              <Input
-                placeholder="Search connections..."
-                value={connectionSearch}
-                onChange={(e) => setConnectionSearch(e.target.value)}
-                className="h-8"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-            <DropdownMenuSeparator />
+        {/* Connection Breadcrumb - Hidden on home page */}
+        {!isHomePage && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 font-medium hover:bg-accent"
+            onClick={handleConnectionClick}
+            title="Go to home"
+          >
+            <Database className="h-4 w-4 text-green-600" />
+            <span className="max-w-[150px] truncate">{activeConnection.name}</span>
+          </Button>
+        )}
 
-            {/* Connection List */}
-            <div className="max-h-48 overflow-y-auto">
-              {filteredConnections.length === 0 ? (
-                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                  No connections found
-                </div>
-              ) : (
-                filteredConnections.map((conn) => (
-                  <DropdownMenuItem
-                    key={conn.id}
-                    onClick={() => handleSwitchConnection(conn.id)}
-                    className={conn.id === activeConnectionId ? 'bg-accent' : ''}
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <Database className="h-4 w-4 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{conn.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {conn.host}:{conn.port}
-                        </div>
-                      </div>
-                      {conn.id === activeConnectionId && (
-                        <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </div>
+        {/* Collections Breadcrumb - Middle level */}
+        {(isCollectionsPage || isDocumentsPage) && (
+          <>
+            {!isHomePage && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
 
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onNewConnection}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Connection
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDisconnect} className="text-destructive">
-              <LogOut className="h-4 w-4 mr-2" />
-              Disconnect
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            {isDocumentsPage ? (
+              // Clickable when viewing a specific collection
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 font-medium hover:bg-accent"
+                onClick={handleCollectionsClick}
+                title="Go to collections"
+              >
+                <FolderOpen className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium">Collections</span>
+              </Button>
+            ) : (
+              // Non-clickable when on collections page (current location)
+              <div className="flex items-center gap-2 px-3 py-1.5">
+                <FolderOpen className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium">Collections</span>
+              </div>
+            )}
+          </>
+        )}
 
-        {/* Collection Dropdown (when on /collections route) */}
-        {isOnCollectionsRoute && (
+        {/* Collection Name Breadcrumb - Only on documents page */}
+        {isDocumentsPage && collectionId && (
           <>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1 font-medium">
-                  <FolderOpen className="h-4 w-4 text-blue-600" />
-                  <span className="max-w-[150px] truncate">
-                    {collectionId || 'Select Collection'}
-                  </span>
-                  <ChevronDown className="h-3 w-3 opacity-50" />
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium max-w-[150px] truncate">
+                {collectionId}
+              </span>
+              {currentCollection && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 hover:bg-accent"
+                  onClick={() => setIsEditDialogOpen(true)}
+                  title="Edit collection"
+                >
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64">
-                {/* Search Input */}
-                <div className="p-2">
-                  <Input
-                    placeholder="Search collections..."
-                    value={collectionSearch}
-                    onChange={(e) => setCollectionSearch(e.target.value)}
-                    className="h-8"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-                <DropdownMenuSeparator />
-
-                {/* Collection List */}
-                <div className="max-h-48 overflow-y-auto">
-                  {filteredCollections.length === 0 ? (
-                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                      No collections found
-                    </div>
-                  ) : (
-                    filteredCollections.map((coll) => (
-                      <DropdownMenuItem
-                        key={coll.name}
-                        onClick={() => handleSelectCollection(coll.name)}
-                        className={coll.name === collectionId ? 'bg-accent' : ''}
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <FolderOpen className="h-4 w-4 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{coll.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {coll.count ?? 0} documents
-                            </div>
-                          </div>
-                          {coll.name === collectionId && (
-                            <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
-                          )}
-                        </div>
-                      </DropdownMenuItem>
-                    ))
-                  )}
-                </div>
-
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onNewCollection}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Collection
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleViewAllCollections}>
-                  <List className="h-4 w-4 mr-2" />
-                  View All Collections
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -245,6 +144,15 @@ export function ContextBar({ onNewConnection, onNewCollection }: ContextBarProps
           {activeConnection.host}:{activeConnection.port}
         </span>
       </div>
+
+      {/* Edit Collection Dialog */}
+      {currentCollection && (
+        <CollectionDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          collection={currentCollection}
+        />
+      )}
     </div>
   );
 }

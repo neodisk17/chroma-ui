@@ -8,6 +8,7 @@ import type {
   TestEmbeddingResponse,
   EmbeddingConfig,
   ModelDownloadProgress,
+  CollectionApiKeyStatus,
 } from '../../shared/schemas';
 import { useEmbeddingStore } from '../stores/embedding-store';
 
@@ -15,6 +16,7 @@ import { useEmbeddingStore } from '../stores/embedding-store';
 const EMBEDDING_QUERY_KEYS = {
   openaiKeyStatus: () => ['embedding', 'openai-key-status'] as const,
   availableModels: () => ['embedding', 'available-models'] as const,
+  collectionKeyStatus: (collectionName: string) => ['embedding', 'collection-key-status', collectionName] as const,
 };
 
 /**
@@ -178,7 +180,8 @@ export function useModelDownloadProgress() {
 
   useEffect(() => {
     const cleanup = window.electronAPI.onModelDownloadProgress((progress: unknown) => {
-      setDownloadProgress(progress as ModelDownloadProgress);
+      const p = progress as ModelDownloadProgress;
+      setDownloadProgress(p.modelId, p);
     });
 
     return cleanup;
@@ -224,6 +227,96 @@ export function useIsModelReady() {
       }
 
       return response.data!;
+    },
+  });
+}
+
+// ============================================================================
+// Collection-Level API Key Hooks
+// ============================================================================
+
+/**
+ * Hook to check collection-specific OpenAI API key status
+ */
+export function useCollectionOpenAIKeyStatus(collectionName: string) {
+  return useQuery({
+    queryKey: EMBEDDING_QUERY_KEYS.collectionKeyStatus(collectionName),
+    queryFn: async (): Promise<CollectionApiKeyStatus> => {
+      const response = await window.electronAPI.invoke<CollectionApiKeyStatus>(
+        IPC_CHANNELS.COLLECTION_GET_API_KEY_STATUS,
+        { collectionName }
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to check collection API key status');
+      }
+
+      return response.data!;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!collectionName, // Only run query if collection name is provided
+  });
+}
+
+/**
+ * Hook to save collection-specific OpenAI API key
+ */
+export function useSaveCollectionOpenAIKey(collectionName: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (apiKey: string): Promise<{ success: boolean }> => {
+      const response = await window.electronAPI.invoke<{ success: boolean }>(
+        IPC_CHANNELS.COLLECTION_SET_API_KEY,
+        { collectionName, apiKey }
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to save collection API key');
+      }
+
+      return response.data!;
+    },
+    onSuccess: () => {
+      // Invalidate collection key status query
+      queryClient.invalidateQueries({
+        queryKey: EMBEDDING_QUERY_KEYS.collectionKeyStatus(collectionName)
+      });
+      toast.success('Collection API key saved successfully');
+    },
+    onError: (error) => {
+      toast.error(`Failed to save collection API key: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    },
+  });
+}
+
+/**
+ * Hook to delete collection-specific OpenAI API key
+ */
+export function useDeleteCollectionOpenAIKey(collectionName: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<{ deleted: boolean }> => {
+      const response = await window.electronAPI.invoke<{ deleted: boolean }>(
+        IPC_CHANNELS.COLLECTION_DELETE_API_KEY,
+        { collectionName }
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to delete collection API key');
+      }
+
+      return response.data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: EMBEDDING_QUERY_KEYS.collectionKeyStatus(collectionName)
+      });
+      toast.success('Collection API key deleted successfully');
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete collection API key: ${error instanceof Error ? error.message : 'Unknown error'}`);
     },
   });
 }

@@ -64,7 +64,10 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
 
   // Model warmup and download progress
   const warmupModel = useWarmupModel();
-  const downloadProgress = useModelDownloadProgress();
+  const downloadProgressMap = useModelDownloadProgress();
+  const downloadProgress = Object.values(downloadProgressMap).find(
+    (p) => p.status === 'downloading'
+  );
 
   // Check collection-specific API key status (only in edit mode for OpenAI collections)
   const { data: collectionKeyStatus } = useCollectionOpenAIKeyStatus(
@@ -279,7 +282,7 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
                   <span>
                     Embedding Configuration
                     <span className="ml-2 text-muted-foreground text-xs">
-                      ({selectedProvider === 'default'
+                      ({selectedProvider === 'local'
                         ? 'Default (Local)'
                         : selectedProvider === 'openai'
                           ? 'OpenAI'
@@ -315,11 +318,11 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
                 <Download className="h-4 w-4 animate-pulse" />
                 Downloading embedding model...
               </div>
-              {downloadProgress && downloadProgress.status === 'downloading' && (
+              {downloadProgress && (
                 <>
                   <Progress value={downloadProgress.percentage || 0} className="h-2" />
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    {downloadProgress.percentage?.toFixed(0) || 0}% complete
+                    {downloadProgress.percentage.toFixed(0)}% complete
                   </p>
                 </>
               )}
