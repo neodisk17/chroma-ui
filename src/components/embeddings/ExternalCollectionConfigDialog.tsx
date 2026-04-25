@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '../ui/dialog';
@@ -29,8 +29,17 @@ export function ExternalCollectionConfigDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter models by detected dimensions
-  const filteredModels = detectedDimensions
+  // Fix 1: Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedModelId('');
+      setError(null);
+      setIsSaving(false);
+    }
+  }, [open]);
+
+  // Fix 3: Use !== null so dimensions of 0 won't be silently skipped
+  const filteredModels = detectedDimensions !== null
     ? availableModels.filter((m) => m.dimensions === detectedDimensions)
     : availableModels;
 
@@ -76,7 +85,7 @@ export function ExternalCollectionConfigDialog({
           <DialogDescription>
             Collection <strong>{collectionName}</strong> was created outside this app and has no
             embedding configuration stored.
-            {detectedDimensions && (
+            {detectedDimensions !== null && (
               <span className="block mt-1">
                 Detected embedding dimensions: <strong>{detectedDimensions}</strong>
               </span>
@@ -107,6 +116,11 @@ export function ExternalCollectionConfigDialog({
                   </span>
                 </button>
               ))}
+              {filteredModels.length === 0 && (
+                <p className="text-sm text-muted-foreground py-2">
+                  No local models match {detectedDimensions} dimensions. Install a compatible model first.
+                </p>
+              )}
             </div>
           </div>
 
