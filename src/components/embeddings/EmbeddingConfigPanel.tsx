@@ -18,6 +18,8 @@ import { useEmbeddingStore } from '../../stores/embedding-store';
 import {
   useOpenAIKeyStatus,
   useSaveOpenAIKey,
+  useCollectionOpenAIKeyStatus,
+  useSaveCollectionOpenAIKey,
   useAvailableModels,
   useDownloadModel,
   useTestEmbedding,
@@ -27,9 +29,10 @@ import type { EmbeddingProvider, DType, OpenAIModel } from '../../../shared/sche
 
 interface EmbeddingConfigPanelProps {
   onConfigChange?: () => void;
+  collectionName?: string;
 }
 
-export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelProps) {
+export function EmbeddingConfigPanel({ onConfigChange, collectionName }: EmbeddingConfigPanelProps) {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [hfModelSource, setHfModelSource] = useState<'preset' | 'custom'>('preset');
@@ -51,8 +54,16 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
   } = useEmbeddingStore();
 
   // Queries and mutations
-  const { isLoading: isCheckingKey } = useOpenAIKeyStatus();
-  const saveApiKey = useSaveOpenAIKey();
+  const globalKeyQuery = useOpenAIKeyStatus();
+  const collectionKeyQuery = useCollectionOpenAIKeyStatus(collectionName ?? '');
+  const isCheckingKey = collectionName ? collectionKeyQuery.isLoading : globalKeyQuery.isLoading;
+  const effectiveHasKey = collectionName
+    ? (collectionKeyQuery.data?.hasKey || collectionKeyQuery.data?.hasGlobalKey || false)
+    : hasOpenAIKey;
+
+  const globalSaveApiKey = useSaveOpenAIKey();
+  const collectionSaveApiKey = useSaveCollectionOpenAIKey(collectionName ?? '');
+  const saveApiKey = collectionName ? collectionSaveApiKey : globalSaveApiKey;
   const { data: modelsData, isLoading: isLoadingModels } = useAvailableModels();
   const downloadModel = useDownloadModel();
   const testEmbedding = useTestEmbedding();
@@ -214,7 +225,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Checking...
               </div>
-            ) : hasOpenAIKey ? (
+            ) : effectiveHasKey ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-green-600">
                   <CheckCircle2 className="h-4 w-4" />
@@ -238,7 +249,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
             )}
 
             {/* API Key Input */}
-            {(showApiKeyInput || !hasOpenAIKey) && (
+            {(showApiKeyInput || !effectiveHasKey) && (
               <div className="flex gap-2 mt-2">
                 <Input
                   type="password"
@@ -420,7 +431,7 @@ export function EmbeddingConfigPanel({ onConfigChange }: EmbeddingConfigPanelPro
           onClick={handleTestEmbedding}
           disabled={
             testEmbedding.isPending ||
-            (selectedProvider === 'openai' && !hasOpenAIKey)
+            (selectedProvider === 'openai' && !effectiveHasKey)
           }
         >
           {testEmbedding.isPending ? (
