@@ -34,6 +34,7 @@ export interface QueryResult {
 export interface QueryTemplate {
   id: string;
   name: string;
+  collectionName: string;
   queryType: QueryType;
   queryText: string;
   nResults: number;
@@ -89,7 +90,7 @@ interface QueryState {
   clearResults: () => void;
 
   // Actions - Templates
-  saveTemplate: (name: string) => void;
+  saveTemplate: (name: string, collectionName: string) => void;
   loadTemplate: (templateId: string) => void;
   deleteTemplate: (templateId: string) => void;
 }
@@ -200,11 +201,12 @@ export const useQueryStore = create<QueryState>()(
       clearResults: () => set({ results: null, error: null }),
 
       // Templates
-      saveTemplate: (name) => {
+      saveTemplate: (name, collectionName) => {
         const state = get();
         const template: QueryTemplate = {
           id: `template-${Date.now()}`,
           name,
+          collectionName,
           queryType: state.queryType,
           queryText: state.queryText,
           nResults: state.nResults,

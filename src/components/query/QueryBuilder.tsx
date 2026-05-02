@@ -155,7 +155,7 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <QueryTemplates />
+            <QueryTemplates collectionName={collectionName ?? ''} />
           </div>
         </div>
       </div>

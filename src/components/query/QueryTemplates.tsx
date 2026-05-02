@@ -34,9 +34,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export function QueryTemplates() {
+interface QueryTemplatesProps {
+  collectionName: string;
+}
+
+export function QueryTemplates({ collectionName }: QueryTemplatesProps) {
   const { templates, saveTemplate, loadTemplate, deleteTemplate, queryText, metadataFilters, documentFilters } =
     useQueryStore();
+
+  const collectionTemplates = templates.filter((t) => t.collectionName === collectionName);
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
@@ -58,7 +64,7 @@ export function QueryTemplates() {
       return;
     }
 
-    saveTemplate(templateName.trim());
+    saveTemplate(templateName.trim(), collectionName);
     toast.success(`Template '${templateName.trim()}' saved successfully`);
     setTemplateName('');
     setSaveDialogOpen(false);
@@ -71,7 +77,7 @@ export function QueryTemplates() {
     }
 
     loadTemplate(selectedTemplateId);
-    const template = templates.find((t) => t.id === selectedTemplateId);
+    const template = collectionTemplates.find((t) => t.id === selectedTemplateId);
     if (template) {
       toast.success(`Template '${template.name}' loaded successfully`);
     }
@@ -90,7 +96,7 @@ export function QueryTemplates() {
   const confirmDeleteTemplate = () => {
     if (!templateToDelete) return;
 
-    const template = templates.find((t) => t.id === templateToDelete);
+    const template = collectionTemplates.find((t) => t.id === templateToDelete);
     deleteTemplate(templateToDelete);
     if (template) {
       toast.success(`Template '${template.name}' deleted successfully`);
@@ -150,7 +156,7 @@ export function QueryTemplates() {
       {/* Load Template Button */}
       <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" disabled={templates.length === 0}>
+          <Button variant="outline" size="sm" disabled={collectionTemplates.length === 0}>
             <FolderOpen className="mr-2 h-4 w-4" />
             Load Query
           </Button>
@@ -163,7 +169,7 @@ export function QueryTemplates() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {templates.length === 0 ? (
+            {collectionTemplates.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No templates saved yet</p>
               </div>
@@ -175,7 +181,7 @@ export function QueryTemplates() {
                     <SelectValue placeholder="Choose a template..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {templates.map((template) => (
+                    {collectionTemplates.map((template) => (
                       <SelectItem key={template.id} value={template.id}>
                         {template.name}
                       </SelectItem>
@@ -188,7 +194,7 @@ export function QueryTemplates() {
                   <Card className="mt-4">
                     <CardContent className="pt-6">
                       {(() => {
-                        const template = templates.find((t) => t.id === selectedTemplateId);
+                        const template = collectionTemplates.find((t) => t.id === selectedTemplateId);
                         if (!template) return null;
 
                         return (
