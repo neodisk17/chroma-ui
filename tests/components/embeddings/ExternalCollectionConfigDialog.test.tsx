@@ -1,46 +1,91 @@
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
 import { ExternalCollectionConfigDialog } from '../../../src/components/embeddings/ExternalCollectionConfigDialog';
+
+// Mock EmbeddingConfigPanel — it has its own tests; here we just verify it renders
+vi.mock('../../../src/components/embeddings/EmbeddingConfigPanel', () => ({
+  EmbeddingConfigPanel: ({ collectionName }: { collectionName: string }) => (
+    <div data-testid="embedding-config-panel">EmbeddingConfigPanel:{collectionName}</div>
+  ),
+}));
+
+const mockBuildEmbeddingConfig = vi.fn().mockReturnValue({
+  provider: 'openai',
+  model: 'text-embedding-3-small',
+});
+
+vi.mock('../../../src/stores/embedding-store', () => ({
+  useEmbeddingStore: (selector?: (s: any) => any) => {
+    const state = { buildEmbeddingConfig: mockBuildEmbeddingConfig };
+    return selector ? selector(state) : state;
+  },
+}));
 
 const defaultProps = {
   open: true,
   collectionName: 'my-collection',
-  detectedDimensions: 384,
-  availableModels: [
-    { id: 'Xenova/all-MiniLM-L6-v2', name: 'all-MiniLM-L6-v2', sizeLabel: '22MB', dimensions: 384, isDefault: true, isDownloaded: true },
-    { id: 'Xenova/all-mpnet-base-v2', name: 'all-mpnet-base-v2', sizeLabel: '86MB', dimensions: 768, isDefault: false, isDownloaded: false },
-  ],
   onSaved: vi.fn(),
   onCancel: vi.fn(),
 };
 
 describe('ExternalCollectionConfigDialog', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('shows collection name in heading', () => {
-    render(<ExternalCollectionConfigDialog {...defaultProps} />);
-    expect(screen.getByText(/my-collection/)).toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI.invoke = vi.fn().mockResolvedValue({ success: true });
   });
 
-  it('shows detected dimensions', () => {
+  it('renders EmbeddingConfigPanel with the collection name', () => {
     render(<ExternalCollectionConfigDialog {...defaultProps} />);
-    expect(screen.getByText(/384/)).toBeInTheDocument();
+    expect(screen.getByTestId('embedding-config-panel')).toHaveTextContent('EmbeddingConfigPanel:my-collection');
   });
 
-  it('only shows models matching detected dimensions', () => {
+  it('shows the collection name in the dialog heading', () => {
     render(<ExternalCollectionConfigDialog {...defaultProps} />);
-    expect(screen.getByText('all-MiniLM-L6-v2')).toBeInTheDocument();
-    expect(screen.queryByText('all-mpnet-base-v2')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/my-collection/).length).toBeGreaterThan(0);
   });
 
-  it('shows corruption warning', () => {
-    render(<ExternalCollectionConfigDialog {...defaultProps} />);
-    expect(screen.getByText(/wrong model/i)).toBeInTheDocument();
-  });
-
-  it('calls onCancel when cancelled', () => {
+  it('calls onCancel when "Provide vectors manually" is clicked', () => {
     render(<ExternalCollectionConfigDialog {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /provide vectors manually/i }));
     expect(defaultProps.onCancel).toHaveBeenCalledOnce();
+  });
+
+  it('calls buildEmbeddingConfig and COLLECTION_UPDATE IPC on save', async () => {
+    render(<ExternalCollectionConfigDialog {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /save to collection/i }));
+
+    await waitFor(() => {
+      expect(mockBuildEmbeddingConfig).toHaveBeenCalled();
+      expect(window.electronAPI.invoke).toHaveBeenCalledWith(
+        'collection:update',
+        expect.objectContaining({
+          name: 'my-collection',
+          metadata: expect.objectContaining({
+            embedding_config: JSON.stringify({ provider: 'openai', model: 'text-embedding-3-small' }),
+          }),
+        })
+      );
+    });
+  });
+
+  it('calls onSaved with config after successful save', async () => {
+    render(<ExternalCollectionConfigDialog {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /save to collection/i }));
+
+    await waitFor(() =>
+      expect(defaultProps.onSaved).toHaveBeenCalledWith({
+        provider: 'openai',
+        model: 'text-embedding-3-small',
+      })
+    );
+  });
+
+  it('shows error message when IPC call fails', async () => {
+    window.electronAPI.invoke = vi.fn().mockResolvedValue({ success: false, error: 'Permission denied' });
+    render(<ExternalCollectionConfigDialog {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /save to collection/i }));
+
+    await waitFor(() => expect(screen.getByText(/Permission denied/i)).toBeInTheDocument());
+    expect(defaultProps.onSaved).not.toHaveBeenCalled();
   });
 });
