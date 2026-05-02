@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle, Upload, FileJson, FileSpreadsheet, Loader2, CheckCircle, Download, Info } from 'lucide-react';
 import { useBulkImport, useCollectionEmbeddingStatus } from '@/hooks/use-chromadb';
+import { ExternalCollectionConfigDialog } from '../embeddings/ExternalCollectionConfigDialog';
 import Papa from 'papaparse';
 import type { Metadata } from '@/types/chromadb.types';
 
@@ -54,6 +55,10 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
 
   const bulkImport = useBulkImport();
   const embeddingStatus = useCollectionEmbeddingStatus(collectionName);
+  const [configRetryAttempted, setConfigRetryAttempted] = useState(false);
+  const [externalConfigPrompt, setExternalConfigPrompt] = useState<{
+    collectionName: string;
+  } | null>(null);
 
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -165,6 +170,17 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
       // Close dialog on success
       handleClose();
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (
+        !configRetryAttempted &&
+        message.includes('Cannot execute text query without embedding configuration')
+      ) {
+        setConfigRetryAttempted(true);
+        setExternalConfigPrompt({ collectionName });
+        return;
+      }
+
       // Error toast is shown by mutation hook
       console.error('Bulk import error:', error);
     }
@@ -174,6 +190,8 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
     setFile(null);
     setDocuments([]);
     setParseError(null);
+    setConfigRetryAttempted(false);
+    setExternalConfigPrompt(null);
     onClose();
   };
 
@@ -318,6 +336,15 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
                         </ul>
                       </div>
                     </AlertDescription>
+                    <div className="mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setExternalConfigPrompt({ collectionName })}
+                      >
+                        Configure Embedding
+                      </Button>
+                    </div>
                   </Alert>
                 );
               } else if (docsNeedingEmbeddings > 0 && embeddingStatus.data.canAutoEmbed) {
@@ -410,6 +437,22 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {externalConfigPrompt && (
+        <ExternalCollectionConfigDialog
+          open={!!externalConfigPrompt}
+          collectionName={externalConfigPrompt.collectionName}
+          onSaved={() => {
+            setExternalConfigPrompt(null);
+            setConfigRetryAttempted(false);
+            handleImport();
+          }}
+          onCancel={() => {
+            setExternalConfigPrompt(null);
+            setConfigRetryAttempted(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
