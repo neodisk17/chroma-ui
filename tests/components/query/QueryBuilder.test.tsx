@@ -93,6 +93,9 @@ vi.mock('lucide-react', () => ({
   Search: () => <span />,
   Filter: () => <span />,
   FileText: () => <span />,
+  Settings: () => <span data-testid="settings-icon" />,
+  AlertTriangle: () => <span data-testid="alert-icon" />,
+  X: () => <span data-testid="dismiss-icon" />,
 }));
 
 describe('QueryBuilder', () => {
@@ -225,18 +228,6 @@ describe('QueryBuilder', () => {
     );
   });
 
-  it('shows error message when error exists', () => {
-    mockQueryStore.error = 'Query execution failed';
-    render(<QueryBuilder collectionName="test" />);
-    expect(screen.getByText('Query execution failed')).toBeInTheDocument();
-  });
-
-  it('does not show error section when error is null', () => {
-    mockQueryStore.error = null;
-    const { container } = render(<QueryBuilder collectionName="test" />);
-    expect(container.querySelector('.bg-destructive\\/10')).not.toBeInTheDocument();
-  });
-
   it('shows active filter count badge', () => {
     mockQueryStore.queryText = 'search';
     mockQueryStore.metadataFilters = [
@@ -330,7 +321,7 @@ describe('QueryBuilder', () => {
     expect(screen.getAllByText('Document Filters').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows ExternalCollectionConfigDialog when error contains missing-config message', async () => {
+  it('shows embedding config banner with action button when error contains missing-config message', async () => {
     mockQueryStore.queryText = 'search term';
     mockMutateAsync.mockRejectedValueOnce(
       new Error('Cannot execute text query without embedding configuration')
@@ -341,6 +332,25 @@ describe('QueryBuilder', () => {
 
     await waitFor(() => {
       expect(mockQueryStore.setError).toHaveBeenCalledWith(null);
+      expect(screen.getByText('Embedding model not configured')).toBeInTheDocument();
+      expect(screen.getByText('Change Embedding')).toBeInTheDocument();
+    });
+  });
+
+  it('shows dimension mismatch banner with correct dimensions when dimension error occurs', async () => {
+    mockQueryStore.queryText = 'search term';
+    mockMutateAsync.mockRejectedValueOnce(
+      new Error('Bad request with status: Collection expecting embedding with dimension of 768, got 384')
+    );
+
+    render(<QueryBuilder collectionName="my-col" />);
+    fireEvent.click(screen.getByText('Execute Query'));
+
+    await waitFor(() => {
+      expect(mockQueryStore.setError).toHaveBeenCalledWith(null);
+      expect(screen.getByText('Embedding dimension mismatch')).toBeInTheDocument();
+      expect(screen.getByText(/This collection expects 768-dimensional vectors/)).toBeInTheDocument();
+      expect(screen.getByText('Change Embedding')).toBeInTheDocument();
     });
   });
 });

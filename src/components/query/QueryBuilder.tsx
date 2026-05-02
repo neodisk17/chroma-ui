@@ -7,7 +7,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { PlayCircle, XCircle, ChevronDown, ChevronUp, Search, Filter, FileText } from 'lucide-react';
+import { PlayCircle, XCircle, ChevronDown, ChevronUp, Search, Filter, FileText, Settings, AlertTriangle, X } from 'lucide-react';
 import { useQueryStore } from '@/stores/query-store';
 import { SimilaritySearchSection } from './SimilaritySearchSection';
 import { MetadataFilterSection } from './MetadataFilterSection';
@@ -31,7 +31,6 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     documentLogicalOperator,
     nResults,
     isExecuting,
-    error,
     clearQuery,
     setError,
   } = useQueryStore();
@@ -43,7 +42,10 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
   const [externalConfigPrompt, setExternalConfigPrompt] = useState<{
     collectionName: string;
   } | null>(null);
-  const [configRetryAttempted, setConfigRetryAttempted] = useState(false);
+  const [embeddingErrorInfo, setEmbeddingErrorInfo] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const executeQuery = useExecuteQuery();
 
   // Count active filters
@@ -108,16 +110,23 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (
-        !configRetryAttempted &&
-        message.includes('Cannot execute text query without embedding configuration')
-      ) {
-        setConfigRetryAttempted(true);
-        setExternalConfigPrompt({ collectionName });
-        // Clear the error that onError already wrote to the store so the toast
-        // and the inline error banner don't appear alongside the config dialog.
+
+      const dimMatch = message.match(/expecting embedding with dimension of (\d+), got (\d+)/);
+      if (dimMatch) {
+        setEmbeddingErrorInfo({
+          title: 'Embedding dimension mismatch',
+          description: `This collection expects ${dimMatch[1]}-dimensional vectors, but the selected model produces ${dimMatch[2]}. Choose a compatible model.`,
+        });
         setError(null);
-        // Don't re-throw — the dialog handles recovery
+        return;
+      }
+
+      if (message.includes('Cannot execute text query without embedding configuration')) {
+        setEmbeddingErrorInfo({
+          title: 'Embedding model not configured',
+          description: 'Select the provider and model used to create this collection.',
+        });
+        setError(null);
         return;
       }
       // Other errors are handled by useExecuteQuery's onError (store + toast)
@@ -291,6 +300,38 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
               <XCircle className="mr-2 h-4 w-4" />
               Clear All Filters
             </Button>
+
+            {embeddingErrorInfo && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/30 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 leading-snug">
+                      {embeddingErrorInfo.title}
+                    </p>
+                    <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5 leading-snug">
+                      {embeddingErrorInfo.description}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 h-7 text-xs border-amber-300 bg-transparent text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                      onClick={() => collectionName && setExternalConfigPrompt({ collectionName })}
+                    >
+                      <Settings className="mr-1.5 h-3 w-3" />
+                      Change Embedding
+                    </Button>
+                  </div>
+                  <button
+                    onClick={() => setEmbeddingErrorInfo(null)}
+                    className="text-amber-500 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -304,24 +345,17 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
         </div>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="border-t bg-destructive/10 p-4">
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
-
       {externalConfigPrompt && (
         <ExternalCollectionConfigDialog
           open={!!externalConfigPrompt}
           collectionName={externalConfigPrompt.collectionName}
           onSaved={() => {
             setExternalConfigPrompt(null);
+            setEmbeddingErrorInfo(null);
             handleExecute();
           }}
           onCancel={() => {
             setExternalConfigPrompt(null);
-            setConfigRetryAttempted(false);
           }}
         />
       )}
