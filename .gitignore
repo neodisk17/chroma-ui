@@ -8,6 +8,7 @@ release/
 
 # Development
 .DS_Store
+.worktrees/
 .vscode/
 .idea/
 
@@ -38,3 +39,4 @@ scripts
 data.json
 
 website
+.gitnexus
