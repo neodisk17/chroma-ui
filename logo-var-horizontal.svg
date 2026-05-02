@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- VARIATION D: Horizontal layout — Icon left, text right, violet-rose gradient -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 210" width="580" height="210">
+  <defs>
+    <style>
+      <![CDATA[
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Rajdhani:wght@300&display=swap');
+      ]]>
+    </style>
+
+    <!-- Violet → Rose gradient for the mark -->
+    <linearGradient id="g" x1="40" y1="35" x2="162" y2="165" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+
+    <filter id="ng" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="bloom" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"/>
+    </filter>
+
+    <filter id="textGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background — very dark blue-black -->
+  <rect width="580" height="210" fill="#04030F"/>
+
+  <!-- Ambient gradient wash on the left -->
+  <rect width="210" height="210" fill="url(#g)" opacity="0.03"/>
+
+  <!-- HEXAGONAL MARK (smaller, r=62, center at 100,105)
+    N0 top         (100,  43)
+    N1 top-right   (153.7, 74)
+    N2 bot-right   (153.7, 136)
+    N3 bottom      (100, 167)
+    N4 bot-left    (46.3, 136)
+    N5 top-left    (46.3, 74)
+    Center         (100, 105)
+  -->
+
+  <!-- Ambient glow -->
+  <circle cx="100" cy="105" r="65" fill="#A78BFA" filter="url(#bloom)" opacity="0.1"/>
+
+  <!-- Cross diagonals -->
+  <g stroke="url(#g)" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.10">
+    <line x1="100"   y1="43"  x2="153.7" y2="136"/>
+    <line x1="100"   y1="43"  x2="46.3"  y2="136"/>
+    <line x1="153.7" y1="74"  x2="46.3"  y2="136"/>
+    <line x1="153.7" y1="74"  x2="100"   y2="167"/>
+    <line x1="46.3"  y1="74"  x2="153.7" y2="136"/>
+    <line x1="46.3"  y1="74"  x2="100"   y2="167"/>
+  </g>
+
+  <!-- Outer hexagon -->
+  <g stroke="url(#g)" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.36">
+    <line x1="100"   y1="43"  x2="153.7" y2="74"/>
+    <line x1="153.7" y1="74"  x2="153.7" y2="136"/>
+    <line x1="153.7" y1="136" x2="100"   y2="167"/>
+    <line x1="100"   y1="167" x2="46.3"  y2="136"/>
+    <line x1="46.3"  y1="136" x2="46.3"  y2="74"/>
+    <line x1="46.3"  y1="74"  x2="100"   y2="43"/>
+  </g>
+
+  <!-- Spokes -->
+  <g stroke="url(#g)" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.64">
+    <line x1="100" y1="105" x2="100"   y2="43"/>
+    <line x1="100" y1="105" x2="153.7" y2="74"/>
+    <line x1="100" y1="105" x2="153.7" y2="136"/>
+    <line x1="100" y1="105" x2="100"   y2="167"/>
+    <line x1="100" y1="105" x2="46.3"  y2="136"/>
+    <line x1="100" y1="105" x2="46.3"  y2="74"/>
+  </g>
+
+  <!-- Node halos -->
+  <g filter="url(#bloom)" opacity="0.5">
+    <circle cx="100"   cy="43"  r="8" fill="#A78BFA"/>
+    <circle cx="153.7" cy="74"  r="8" fill="#A78BFA"/>
+    <circle cx="153.7" cy="136" r="8" fill="#F472B6"/>
+    <circle cx="100"   cy="167" r="8" fill="#F472B6"/>
+    <circle cx="46.3"  cy="136" r="8" fill="#F472B6"/>
+    <circle cx="46.3"  cy="74"  r="8" fill="#A78BFA"/>
+    <circle cx="100"   cy="105" r="10" fill="#C084FC"/>
+  </g>
+
+  <!-- Nodes -->
+  <g filter="url(#ng)">
+    <circle cx="100"   cy="43"  r="4" fill="url(#g)"/>
+    <circle cx="153.7" cy="74"  r="4" fill="url(#g)"/>
+    <circle cx="153.7" cy="136" r="4" fill="url(#g)"/>
+    <circle cx="100"   cy="167" r="4" fill="url(#g)"/>
+    <circle cx="46.3"  cy="136" r="4" fill="url(#g)"/>
+    <circle cx="46.3"  cy="74"  r="4" fill="url(#g)"/>
+    <circle cx="100"   cy="105" r="5.5" fill="url(#g)"/>
+    <circle cx="100"   cy="105" r="2"   fill="#fff" opacity="0.88"/>
+  </g>
+
+  <!-- Vertical divider between icon and text -->
+  <line x1="192" y1="42" x2="192" y2="168"
+    stroke="url(#g)" stroke-width="0.75" opacity="0.2"/>
+
+  <!-- TEXT — left aligned, vertically centered -->
+  <!-- CHROMA -->
+  <text x="210" y="98"
+    font-family="'Orbitron', 'Arial Black', sans-serif"
+    font-weight="900" font-size="46" letter-spacing="6"
+    fill="#FFFFFF">CHROMA</text>
+
+  <!-- Separator -->
+  <line x1="210" y1="115" x2="370" y2="115"
+    stroke="#A78BFA" stroke-width="0.75" opacity="0.38"/>
+
+  <!-- DB VIEWER -->
+  <text x="210" y="140"
+    font-family="'Rajdhani', 'Arial', sans-serif"
+    font-weight="300" font-size="15" letter-spacing="6"
+    fill="#F472B6">DB VIEWER</text>
+</svg>
