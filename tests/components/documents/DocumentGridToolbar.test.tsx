@@ -102,7 +102,7 @@ describe('DocumentGridToolbar', () => {
 
   it('formats large document counts with locale string', () => {
     render(<DocumentGridToolbar {...defaultProps} totalDocuments={1234567} />);
-    expect(screen.getByTestId('badge')).toHaveTextContent('1,234,567 total');
+    expect(screen.getByTestId('badge')).toHaveTextContent('12,34,567 total');
   });
 
   it('renders Refresh button', () => {

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DocumentGrid } from '../../../src/components/documents/DocumentGrid';
 
@@ -272,7 +272,8 @@ describe('DocumentGrid', () => {
     render(<DocumentGrid collectionName="test_collection" />);
 
     // The EmptyState component is rendered with onAddDocument callback
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
-    expect(screen.getByText('Add Document')).toBeInTheDocument();
+    const emptyState = screen.getByTestId('empty-state');
+    expect(emptyState).toBeInTheDocument();
+    expect(within(emptyState).getByText('Add Document')).toBeInTheDocument();
   });
 });

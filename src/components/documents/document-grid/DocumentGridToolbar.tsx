@@ -54,7 +54,7 @@ export const DocumentGridToolbar = ({
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold">Documents</h2>
           <Badge variant="outline">
-            {totalDocuments.toLocaleString()} total
+            {totalDocuments.toLocaleString('en-IN')} total
           </Badge>
         </div>
 
