@@ -17,8 +17,6 @@ import { QueryTemplates } from './QueryTemplates';
 import { useExecuteQuery } from '@/hooks/use-chromadb';
 import type { ChromaDBQueryObject, ChromaDBWhereClause } from '@/types/chromadb.types';
 import { ExternalCollectionConfigDialog } from '../embeddings/ExternalCollectionConfigDialog';
-import { useAvailableModels } from '../../hooks/use-embedding';
-import type { EmbeddingConfig } from '../../../shared/schemas';
 
 interface QueryBuilderProps {
   collectionName?: string;
@@ -44,11 +42,9 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
   const [documentOpen, setDocumentOpen] = useState(true);
   const [externalConfigPrompt, setExternalConfigPrompt] = useState<{
     collectionName: string;
-    detectedDimensions: number | null;
   } | null>(null);
   const [configRetryAttempted, setConfigRetryAttempted] = useState(false);
   const executeQuery = useExecuteQuery();
-  const { data: availableModels = [] } = useAvailableModels();
 
   // Count active filters
   const activeMetadataFilters = metadataFilters.filter(f => f.field && f.value).length;
@@ -114,14 +110,10 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
       const message = error instanceof Error ? error.message : String(error);
       if (
         !configRetryAttempted &&
-        (message.includes('does not have an embedding configuration') ||
-          message.includes('no embedding config'))
+        message.includes('Cannot execute text query without embedding configuration')
       ) {
         setConfigRetryAttempted(true);
-        setExternalConfigPrompt({
-          collectionName,
-          detectedDimensions: null,
-        });
+        setExternalConfigPrompt({ collectionName });
         // Clear the error that onError already wrote to the store so the toast
         // and the inline error banner don't appear alongside the config dialog.
         setError(null);
@@ -323,11 +315,8 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
         <ExternalCollectionConfigDialog
           open={!!externalConfigPrompt}
           collectionName={externalConfigPrompt.collectionName}
-          detectedDimensions={externalConfigPrompt.detectedDimensions}
-          availableModels={availableModels}
-          onSaved={(_config: EmbeddingConfig) => {
+          onSaved={() => {
             setExternalConfigPrompt(null);
-            // Retry the query — config is now saved to collection metadata
             handleExecute();
           }}
           onCancel={() => {

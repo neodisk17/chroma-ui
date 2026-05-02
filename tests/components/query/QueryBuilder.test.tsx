@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryBuilder } from '../../../src/components/query/QueryBuilder';
 
@@ -7,6 +7,8 @@ const mockQueryStore = {
   queryText: '',
   metadataFilters: [] as any[],
   documentFilters: [] as any[],
+  metadataLogicalOperator: '$and' as const,
+  documentLogicalOperator: '$and' as const,
   nResults: 10,
   isExecuting: false,
   error: null as string | null,
@@ -326,5 +328,19 @@ describe('QueryBuilder', () => {
   it('renders Document Filters section header', () => {
     render(<QueryBuilder collectionName="test" />);
     expect(screen.getAllByText('Document Filters').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows ExternalCollectionConfigDialog when error contains missing-config message', async () => {
+    mockQueryStore.queryText = 'search term';
+    mockMutateAsync.mockRejectedValueOnce(
+      new Error('Cannot execute text query without embedding configuration')
+    );
+
+    render(<QueryBuilder collectionName="my-col" />);
+    fireEvent.click(screen.getByText('Execute Query'));
+
+    await waitFor(() => {
+      expect(mockQueryStore.setError).toHaveBeenCalledWith(null);
+    });
   });
 });
