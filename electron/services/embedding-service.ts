@@ -1,4 +1,5 @@
 import * as keytar from 'keytar';
+import type { BrowserWindow } from 'electron';
 import type { EmbeddingFunction } from 'chromadb';
 import type {
   EmbeddingConfig,
@@ -173,6 +174,11 @@ class HuggingFaceInferenceEmbeddingFunction implements EmbeddingFunction {
  */
 export class EmbeddingService {
   private activeEmbedders: Map<string, EmbeddingFunction> = new Map();
+  private mainWindow: BrowserWindow | null = null;
+
+  setMainWindow(window: BrowserWindow): void {
+    this.mainWindow = window;
+  }
 
   // ============================================================================
   // OpenAI API Key Management
