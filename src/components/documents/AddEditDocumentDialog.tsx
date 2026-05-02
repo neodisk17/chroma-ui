@@ -13,6 +13,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { DocumentEditor, DocumentFormData, validateDocumentForm } from './DocumentEditor';
 import { useAddDocument, useUpdateDocument } from '@/hooks/use-chromadb';
 import { ModelDownloadDialog } from '../embeddings/ModelDownloadDialog';
+import { ExternalCollectionConfigDialog } from '../embeddings/ExternalCollectionConfigDialog';
 import { useAvailableModels } from '../../hooks/use-embedding';
 import type { Document, Collection } from '../../../shared/schemas';
 import type { Metadata } from '@/types/chromadb.types';
@@ -51,6 +52,10 @@ export function AddEditDocumentDialog({
     sizeLabel: string;
     pendingAction: () => void;
   } | null>(null);
+  const [configRetryAttempted, setConfigRetryAttempted] = useState(false);
+  const [externalConfigPrompt, setExternalConfigPrompt] = useState<{
+    collectionName: string;
+  } | null>(null);
 
   const addDocument = useAddDocument();
   const updateDocument = useUpdateDocument();
@@ -64,6 +69,8 @@ export function AddEditDocumentDialog({
     if (open) {
       setValidationErrors([]);
       setDownloadPrompt(null);
+      setConfigRetryAttempted(false);
+      setExternalConfigPrompt(null);
     }
   }, [open, document]);
 
@@ -109,6 +116,16 @@ export function AddEditDocumentDialog({
       onClose();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+
+      // Detect missing embedding config — prompt user to configure before retrying
+      if (
+        !configRetryAttempted &&
+        message.includes('Cannot execute text query without embedding configuration')
+      ) {
+        setConfigRetryAttempted(true);
+        setExternalConfigPrompt({ collectionName });
+        return;
+      }
 
       // Detect missing model — prompt user to download before retrying
       if (message.includes('Failed to load model') || message.includes('ENOENT')) {
@@ -188,6 +205,22 @@ export function AddEditDocumentDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {externalConfigPrompt && (
+        <ExternalCollectionConfigDialog
+          open={!!externalConfigPrompt}
+          collectionName={externalConfigPrompt.collectionName}
+          onSaved={() => {
+            setExternalConfigPrompt(null);
+            setConfigRetryAttempted(false);
+            handleSubmit();
+          }}
+          onCancel={() => {
+            setExternalConfigPrompt(null);
+            setConfigRetryAttempted(false);
+          }}
+        />
+      )}
 
       {/* Model download prompt — shown when operation fails due to missing local model */}
       {downloadPrompt && (
