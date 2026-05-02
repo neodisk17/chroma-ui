@@ -15,7 +15,7 @@ import { DocumentFilterSection } from './DocumentFilterSection';
 import { QueryResults } from './QueryResults';
 import { QueryTemplates } from './QueryTemplates';
 import { useExecuteQuery } from '@/hooks/use-chromadb';
-import type { ChromaDBQueryObject, ChromaDBWhereClause, ChromaDBWhereDocument } from '@/types/chromadb.types';
+import type { ChromaDBQueryObject, ChromaDBWhereClause } from '@/types/chromadb.types';
 import { ExternalCollectionConfigDialog } from '../embeddings/ExternalCollectionConfigDialog';
 import { useAvailableModels } from '../../hooks/use-embedding';
 import type { EmbeddingConfig } from '../../../shared/schemas';
@@ -29,6 +29,8 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     queryText,
     metadataFilters,
     documentFilters,
+    metadataLogicalOperator,
+    documentLogicalOperator,
     nResults,
     isExecuting,
     error,
@@ -64,26 +66,20 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
     }
 
     if (metadataFilters.length > 0) {
-      const where: ChromaDBWhereClause = {};
-      metadataFilters.forEach((filter) => {
-        if (filter.field && filter.value) {
-          where[filter.field] = { [filter.operator]: filter.value };
-        }
-      });
-      if (Object.keys(where).length > 0) {
-        query.where = where;
+      const active = metadataFilters.filter(f => f.field && f.value);
+      if (active.length > 0) {
+        const conditions = active.map(f => ({ [f.field]: { [f.operator]: f.value } }));
+        query.where = (conditions.length === 1 ? conditions[0] : { [metadataLogicalOperator]: conditions }) as ChromaDBWhereClause;
       }
     }
 
     if (documentFilters.length > 0) {
-      const whereDocument: ChromaDBWhereDocument = {};
-      documentFilters.forEach((filter, index) => {
-        if (filter.value) {
-          whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
-        }
-      });
-      if (Object.keys(whereDocument).length > 0) {
-        query.whereDocument = whereDocument;
+      const active = documentFilters.filter(f => f.value);
+      if (active.length === 1) {
+        const f = active[0]!;
+        query.whereDocument = { [f.operator]: f.value };
+      } else if (active.length > 1) {
+        query.whereDocument = { [documentLogicalOperator]: active.map(f => ({ [f.operator]: f.value })) };
       }
     }
 
@@ -111,6 +107,8 @@ export function QueryBuilder({ collectionName }: QueryBuilderProps) {
         nResults,
         metadataFilters: metadataFilters.length > 0 ? metadataFilters : undefined,
         documentFilters: documentFilters.length > 0 ? documentFilters : undefined,
+        metadataLogicalOperator,
+        documentLogicalOperator,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

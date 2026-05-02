@@ -1,4 +1,5 @@
 import type { EmbeddingFunction } from 'chromadb';
+import { z } from 'zod';
 import { connectionManager } from '../../services/connection-manager';
 import { embeddingService } from '../../services/embedding-service';
 import type { Metadata } from '../../../src/types/chromadb.types';
@@ -61,27 +62,65 @@ export async function getCollectionOrError(
 }
 
 /**
+ * Result from attempting to reconstruct embedding function from collection metadata
+ */
+export interface EmbeddingFunctionResult {
+  embeddingFunction?: EmbeddingFunction;
+  status: 'success' | 'missing_config' | 'invalid_config' | 'error';
+  errorMessage?: string;
+  config?: z.infer<typeof EmbeddingConfigSchema>;
+}
+
+/**
  * Reconstructs the embedding function from collection metadata.
  * ChromaDB does not persist embedding functions - they must be recreated
  * from the stored configuration when retrieving collections.
+ * Passes collection name to enable collection-specific key resolution.
  */
 export async function getEmbeddingFunctionFromMetadata(
   client: NonNullable<ReturnType<typeof connectionManager.getActiveClient>>,
   collectionName: string
-): Promise<EmbeddingFunction | undefined> {
+): Promise<EmbeddingFunctionResult> {
   try {
     // Get collection without embedding function to read metadata
     const collection = await client.getCollection({ name: collectionName });
     const embeddingConfigStr = collection.metadata?.['embedding_config'];
 
-    if (embeddingConfigStr && typeof embeddingConfigStr === 'string') {
+    if (!embeddingConfigStr) {
+      return {
+        status: 'missing_config',
+        errorMessage: `Collection '${collectionName}' does not have an embedding configuration`,
+      };
+    }
+
+    if (typeof embeddingConfigStr !== 'string') {
+      return {
+        status: 'invalid_config',
+        errorMessage: 'Embedding config is not a string',
+      };
+    }
+
+    try {
       const config = EmbeddingConfigSchema.parse(JSON.parse(embeddingConfigStr));
-      return await embeddingService.createEmbeddingFunction(config);
+      // Pass collection name to enable collection-specific key fallback
+      const embeddingFunction = await embeddingService.createEmbeddingFunction(config, collectionName);
+      return {
+        embeddingFunction,
+        config,
+        status: 'success',
+      };
+    } catch (parseError) {
+      return {
+        status: 'invalid_config',
+        errorMessage: `Failed to parse embedding config: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+      };
     }
   } catch (error) {
-    console.warn(`Failed to reconstruct embedding function for ${collectionName}:`, error);
+    return {
+      status: 'error',
+      errorMessage: `Failed to retrieve collection metadata: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
   }
-  return undefined;
 }
 
 function isNotFoundError(error: unknown): boolean {
@@ -106,25 +145,19 @@ export function handleError(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildWhereClause(metadataFilters?: MetadataFilter[]): any {
+export function buildWhereClause(metadataFilters?: MetadataFilter[], logicalOp: '$and' | '$or' = '$and'): any {
   if (!metadataFilters || metadataFilters.length === 0) return undefined;
 
-  const where: Record<string, Record<string, string | number | (string | number)[]>> = {};
-  metadataFilters.forEach((filter) => {
-    where[filter.field] = { [filter.operator]: filter.value };
-  });
-  return where;
+  const conditions = metadataFilters.map(f => ({ [f.field]: { [f.operator]: f.value } }));
+  return conditions.length === 1 ? conditions[0] : { [logicalOp]: conditions };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildWhereDocumentClause(documentFilters?: DocumentFilter[]): any {
+export function buildWhereDocumentClause(documentFilters?: DocumentFilter[], logicalOp: '$and' | '$or' = '$and'): any {
   if (!documentFilters || documentFilters.length === 0) return undefined;
 
-  const whereDocument: Record<string, Record<string, string>> = {};
-  documentFilters.forEach((filter, index) => {
-    whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
-  });
-  return whereDocument;
+  if (documentFilters.length === 1) return { [documentFilters[0].operator]: documentFilters[0].value };
+  return { [logicalOp]: documentFilters.map(f => ({ [f.operator]: f.value })) };
 }
 
 export function formatCollection(

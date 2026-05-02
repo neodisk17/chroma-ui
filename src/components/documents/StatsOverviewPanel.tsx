@@ -36,40 +36,63 @@ export function StatsOverviewPanel({ embeddings, onDimensionClick }: StatsOvervi
     // Compute dimension-wise statistics
     const dimensionStats: DimensionStats[] = [];
     for (let d = 0; d < dimensions; d++) {
-      const values = embeddings.map(e => e.vector[d] || 0);
-
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const mean = values.reduce((a, b) => a + b, 0) / n;
-      const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / n;
-      const stdDev = Math.sqrt(variance);
-
+      let min = Infinity;
+      let max = -Infinity;
+      let sum = 0;
+      for (let i = 0; i < n; i++) {
+        const v = embeddings[i]!.vector[d] ?? 0;
+        if (v < min) min = v;
+        if (v > max) max = v;
+        sum += v;
+      }
+      const mean = sum / n;
+      let varianceSum = 0;
+      for (let i = 0; i < n; i++) {
+        const diff = (embeddings[i]!.vector[d] ?? 0) - mean;
+        varianceSum += diff * diff;
+      }
+      const variance = varianceSum / n;
       dimensionStats.push({
         dimension: d,
         min,
         max,
         mean,
-        stdDev,
+        stdDev: Math.sqrt(variance),
         variance,
       });
     }
 
-    // Compute magnitudes
-    const magnitudes = embeddings.map(e => vectorMagnitude(e.vector));
-    const minMagnitude = Math.min(...magnitudes);
-    const maxMagnitude = Math.max(...magnitudes);
-    const meanMagnitude = magnitudes.reduce((a, b) => a + b, 0) / n;
+    // Compute magnitudes without spread
+    let minMagnitude = Infinity;
+    let maxMagnitude = -Infinity;
+    let magnitudeSum = 0;
+    for (const e of embeddings) {
+      const mag = vectorMagnitude(e.vector);
+      if (mag < minMagnitude) minMagnitude = mag;
+      if (mag > maxMagnitude) maxMagnitude = mag;
+      magnitudeSum += mag;
+    }
+    const meanMagnitude = magnitudeSum / n;
 
     // Find top 10 dimensions with highest variance
     const topVarianceDimensions = [...dimensionStats]
       .sort((a, b) => b.variance - a.variance)
       .slice(0, 10);
 
-    // Global statistics
-    const allValues = embeddings.flatMap(e => e.vector);
-    const globalMin = Math.min(...allValues);
-    const globalMax = Math.max(...allValues);
-    const globalMean = allValues.reduce((a, b) => a + b, 0) / allValues.length;
+    // Global statistics — iterate directly to avoid spreading millions of values
+    let globalMin = Infinity;
+    let globalMax = -Infinity;
+    let globalSum = 0;
+    let globalCount = 0;
+    for (const e of embeddings) {
+      for (const v of e.vector) {
+        if (v < globalMin) globalMin = v;
+        if (v > globalMax) globalMax = v;
+        globalSum += v;
+        globalCount++;
+      }
+    }
+    const globalMean = globalCount > 0 ? globalSum / globalCount : 0;
 
     return {
       documentCount: n,

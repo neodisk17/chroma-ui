@@ -190,6 +190,8 @@ export const QueryDocumentsRequestSchema = z.object({
   limit: z.number().int().min(1).max(10000).default(100),
   offset: z.number().int().min(0).default(0),
   includeEmbeddings: z.boolean().optional().default(false),
+  searchQuery: z.string().optional(),
+  searchField: z.enum(['id', 'document', 'metadata', 'all']).optional().default('all'),
 });
 
 export type QueryDocumentsRequest = z.infer<typeof QueryDocumentsRequestSchema>;
@@ -257,6 +259,8 @@ export const ExecuteQueryRequestSchema = z.object({
   // Filter params
   metadataFilters: z.array(MetadataFilterSchema).optional(),
   documentFilters: z.array(DocumentFilterSchema).optional(),
+  metadataLogicalOperator: z.enum(['$and', '$or']).optional().default('$and'),
+  documentLogicalOperator: z.enum(['$and', '$or']).optional().default('$and'),
 });
 
 export type ExecuteQueryRequest = z.infer<typeof ExecuteQueryRequestSchema>;

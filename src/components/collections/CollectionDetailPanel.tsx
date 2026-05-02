@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check, Edit, Trash2 } from 'lucide-react';
+import { Copy, Check, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { useCollection } from '../../hooks/use-chromadb';
 import { Button } from '../ui/button';
 import { SlidingPanel, SlidingPanelSection } from '../ui/sliding-panel';
@@ -216,6 +216,43 @@ export function CollectionDetailPanel({
               </CardContent>
             </Card>
           </div>
+
+          {/* Embedding Configuration */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Embedding Config
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {collection.metadata?.embedding_config ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {collection.metadata.embedding_provider === 'openai' ? 'OpenAI' :
+                       collection.metadata.embedding_provider === 'huggingface' ? 'HuggingFace' :
+                       'Unknown'}
+                    </Badge>
+                  </div>
+                  {collection.metadata.embedding_model && (
+                    <p className="text-xs text-muted-foreground">
+                      Model: {collection.metadata.embedding_model}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <div>
+                    <p className="text-xs font-medium">Not configured</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Documents must have pre-computed embeddings
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Metadata */}
           <Card>

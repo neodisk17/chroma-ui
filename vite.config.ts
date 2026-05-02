@@ -15,6 +15,7 @@ const electronExternals = [
   'chromadb',
   '@chroma-core/default-embed',
   'onnxruntime-node',
+  'sharp',
 ];
 
 // https://vitejs.dev/config/

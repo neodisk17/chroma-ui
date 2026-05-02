@@ -40,14 +40,10 @@ export function DocumentFilterBuilder() {
       return null;
     }
 
-    const whereDocument: ChromaDBWhereDocument = {};
-    documentFilters.forEach((filter, index) => {
-      if (filter.value) {
-        whereDocument[`condition_${index}`] = { [filter.operator]: filter.value };
-      }
-    });
-
-    return Object.keys(whereDocument).length > 0 ? whereDocument : null;
+    const active = documentFilters.filter(f => f.value);
+    if (active.length === 0) return null;
+    if (active.length === 1) { const f = active[0]!; return { [f.operator]: f.value }; }
+    return { $and: active.map(f => ({ [f.operator]: f.value })) };
   };
 
   return (

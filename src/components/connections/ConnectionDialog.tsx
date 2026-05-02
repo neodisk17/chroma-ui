@@ -2,18 +2,25 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateConnectionRequestSchema, CreateConnectionRequest } from '../../../shared/schemas';
+import {
+  CreateConnectionRequestSchema,
+  CreateConnectionRequest,
+  ConnectionProfile
+} from '../../../shared/schemas';
 import { useConnectionStore } from '../../stores/connection-store';
 
 interface ConnectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  connection?: ConnectionProfile | null;
 }
 
-export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
+export function ConnectionDialog({ isOpen, onClose, connection }: ConnectionDialogProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const { createConnection, testConnection } = useConnectionStore();
+  const { createConnection, updateConnection, testConnection } = useConnectionStore();
+
+  const isEditMode = !!connection;
 
   const {
     register,
@@ -35,14 +42,40 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   const authType = watch('authType');
 
   useEffect(() => {
-    if (!isOpen) {
-      reset();
+    if (isOpen && connection) {
+      // Populate form with existing connection data
+      reset({
+        name: connection.name,
+        host: connection.host,
+        port: connection.port,
+        authType: connection.authType,
+        useSSL: connection.useSSL,
+        // Note: We don't populate credentials for security reasons
+      });
+    } else if (!isOpen) {
+      reset({
+        name: '',
+        host: 'localhost',
+        port: 8000,
+        authType: 'none',
+        useSSL: false,
+      });
       setTestResult(null);
     }
-  }, [isOpen, reset]);
+  }, [isOpen, connection, reset]);
 
   const onSubmit = async (data: CreateConnectionRequest) => {
-    const result = await createConnection(data);
+    let result;
+
+    if (isEditMode && connection) {
+      result = await updateConnection({
+        id: connection.id,
+        ...data,
+      });
+    } else {
+      result = await createConnection(data);
+    }
+
     if (result) {
       onClose();
     }
@@ -72,7 +105,9 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-2xl font-bold mb-4">New Connection</h2>
+        <h2 className="text-2xl font-bold mb-4">
+          {isEditMode ? 'Edit Connection' : 'New Connection'}
+        </h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Connection Name */}
@@ -225,7 +260,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
                 disabled={isSubmitting}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50"
               >
-                {isSubmitting ? 'Saving...' : 'Save Connection'}
+                {isSubmitting ? 'Saving...' : isEditMode ? 'Update Connection' : 'Save Connection'}
               </button>
             </div>
           </div>

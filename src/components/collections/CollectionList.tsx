@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, RefreshCw, Plus, FolderOpen, MoreVertical, Edit, Trash2, Info } from 'lucide-react';
+import { Search, RefreshCw, Plus, FolderOpen, MoreVertical, Edit, Trash2, Info, AlertCircle } from 'lucide-react';
 import { useCollections, useDeleteCollection } from '../../hooks/use-chromadb';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
+import { Badge } from '../ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,6 +195,22 @@ export function CollectionList({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {collection.count ?? 0} documents
                     </p>
+                    {/* Embedding Provider Indicator */}
+                    <div className="mt-1 flex items-center gap-2">
+                      {collection.metadata?.embedding_provider && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {collection.metadata.embedding_provider === 'openai' ? 'OpenAI' :
+                           collection.metadata.embedding_provider === 'huggingface' ? 'HuggingFace' :
+                           'Embedding'}
+                        </Badge>
+                      )}
+                      {!collection.metadata?.embedding_config && (
+                        <div className="flex items-center gap-1 text-[10px] text-amber-600">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>No embedding config</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Context Menu */}

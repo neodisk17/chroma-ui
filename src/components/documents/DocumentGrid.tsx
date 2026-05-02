@@ -23,6 +23,7 @@ import {
   MetadataCellRenderer,
   ActionsCellRenderer,
 } from './document-grid';
+import { SearchX } from 'lucide-react';
 import { useUIPreferencesStore } from '../../stores/ui-preferences-store';
 import type { Document } from '../../../shared/schemas';
 
@@ -61,10 +62,12 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   // Get UI preferences
   const { searchQuery, searchField, documentGridLayout } = useUIPreferencesStore();
 
-  // Fetch documents with pagination
-  const { data, isLoading, error, refetch } = useDocuments(collectionName, {
+  // Fetch documents with server-side pagination and search
+  const { data, isLoading, isFetching, error, refetch } = useDocuments(collectionName, {
     limit: pageSize,
     offset: page * pageSize,
+    searchQuery,
+    searchField,
   });
 
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
@@ -73,11 +76,11 @@ export const DocumentGrid = React.memo(function DocumentGrid({
   // Row height based on layout mode
   const rowHeight = documentGridLayout === 'compact' ? 36 : 48;
 
-  // Reset to page 0 when collection changes
+  // Reset to page 0 when collection or search query changes
   useEffect(() => {
     setPage(0);
     setSelectedRows([]);
-  }, [collectionName]);
+  }, [collectionName, searchQuery, searchField]);
 
   // View document handler
   const handleView = useCallback((document: Document) => {
@@ -139,40 +142,15 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     ];
   }, [handleView, handleEdit, handleDelete]);
 
-  // Convert data to row format with search filtering
+  // Convert data to row format — filtering is handled server-side
   const rowData = useMemo(() => {
     if (!data) return [];
-
-    const allRows = data.ids.map((id, index) => ({
+    return data.ids.map((id, index) => ({
       id,
       document: data.documents[index],
       metadata: data.metadatas[index],
     }));
-
-    // Apply search filter if query exists
-    if (!searchQuery.trim()) {
-      return allRows;
-    }
-
-    const query = searchQuery.toLowerCase().trim();
-    return allRows.filter((row) => {
-      switch (searchField) {
-        case 'id':
-          return row.id.toLowerCase().includes(query);
-        case 'document':
-          return (row.document || '').toLowerCase().includes(query);
-        case 'metadata':
-          return JSON.stringify(row.metadata || {}).toLowerCase().includes(query);
-        case 'all':
-        default:
-          return (
-            row.id.toLowerCase().includes(query) ||
-            (row.document || '').toLowerCase().includes(query) ||
-            JSON.stringify(row.metadata || {}).toLowerCase().includes(query)
-          );
-      }
-    });
-  }, [data, searchQuery, searchField]);
+  }, [data]);
   // Grid ready callback
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -256,45 +234,8 @@ export const DocumentGrid = React.memo(function DocumentGrid({
     }
   }, [selectedRows, handleDelete, handleClearSelection]);
 
-  // Loading skeleton
-  if (isLoading && !data) {
-    return <LoadingState />;
-  }
-
-  // Error state
-  if (error) {
-    return <ErrorState message={error.message} onRetry={() => refetch()} />;
-  }
-
-  // Empty state
-  if (!data || data.ids.length === 0) {
-    return (
-      <>
-        <EmptyState
-          onAddDocument={() => setShowAddDialog(true)}
-          onBulkImport={() => setShowImportDialog(true)}
-        />
-
-        {/* Add Document Dialog */}
-        {showAddDialog && (
-          <AddEditDocumentDialog
-            open={showAddDialog}
-            onClose={() => setShowAddDialog(false)}
-            collectionName={collectionName!}
-          />
-        )}
-
-        {/* Bulk Import Dialog */}
-        {showImportDialog && (
-          <BulkImportDialog
-            open={showImportDialog}
-            onClose={() => setShowImportDialog(false)}
-            collectionName={collectionName!}
-          />
-        )}
-      </>
-    );
-  }
+  const isEmpty = !data || data.ids.length === 0;
+  const isSearching = !!searchQuery.trim();
 
   return (
     <div className="flex h-full flex-col">
@@ -313,34 +254,60 @@ export const DocumentGrid = React.memo(function DocumentGrid({
         onDeleteSelected={handleDeleteSelected}
       />
 
-      {/* AG Grid */}
-      <div className="ag-theme-alpine flex-1">
-        <AgGridReact
-          columnDefs={columnDefs}
-          rowData={rowData}
-          onGridReady={onGridReady}
-          onSelectionChanged={onSelectionChanged}
-          onColumnResized={saveColumnState}
-          onColumnMoved={saveColumnState}
-          onSortChanged={saveColumnState}
-          rowSelection="multiple"
-          suppressRowClickSelection
-          animateRows
-          rowHeight={rowHeight}
-          headerHeight={documentGridLayout === 'compact' ? 36 : 40}
-          domLayout="normal"
-          className="h-full w-full"
-        />
-      </div>
+      {/* Loading indicator for page transitions and post-import refresh */}
+      {isFetching && <div className="h-0.5 w-full animate-pulse bg-primary" />}
 
-      <PaginationControls
-        page={page}
-        pageSize={pageSize}
-        totalPages={totalPages}
-        totalDocuments={totalDocuments}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-      />
+      {/* Content area */}
+      {isLoading && !data ? (
+        <LoadingState />
+      ) : error ? (
+        <ErrorState message={error.message} onRetry={() => refetch()} />
+      ) : isEmpty && isSearching ? (
+        <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+          <div className="max-w-md space-y-3">
+            <SearchX className="mx-auto h-10 w-10 text-muted-foreground" />
+            <p className="text-lg font-semibold">No results found</p>
+            <p className="text-sm text-muted-foreground">
+              No documents match <span className="font-medium">"{searchQuery}"</span>. Try a different search term.
+            </p>
+          </div>
+        </div>
+      ) : isEmpty ? (
+        <EmptyState
+          onAddDocument={() => setShowAddDialog(true)}
+          onBulkImport={() => setShowImportDialog(true)}
+        />
+      ) : (
+        <>
+          <div className="ag-theme-alpine flex-1">
+            <AgGridReact
+              columnDefs={columnDefs}
+              rowData={rowData}
+              onGridReady={onGridReady}
+              onSelectionChanged={onSelectionChanged}
+              onColumnResized={saveColumnState}
+              onColumnMoved={saveColumnState}
+              onSortChanged={saveColumnState}
+              rowSelection="multiple"
+              suppressRowClickSelection
+              animateRows
+              rowHeight={rowHeight}
+              headerHeight={documentGridLayout === 'compact' ? 36 : 40}
+              domLayout="normal"
+              className="h-full w-full"
+            />
+          </div>
+
+          <PaginationControls
+            page={page}
+            pageSize={pageSize}
+            totalPages={totalPages}
+            totalDocuments={totalDocuments}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
+      )}
 
       {/* Document detail panel */}
       {showDetail && selectedDocument && (

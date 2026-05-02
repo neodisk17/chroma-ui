@@ -6,12 +6,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useConnectionStore } from '@/stores/connection-store';
 import { useCollections } from '@/hooks/use-chromadb';
 import { QueryBuilder } from '@/components/query/QueryBuilder';
+import { useQueryStore } from '@/stores/query-store';
 
 function QueryPage() {
   const navigate = useNavigate();
   const { activeConnectionId } = useConnectionStore();
   const { data: collections } = useCollections();
   const [selectedCollection, setSelectedCollection] = useState<string | undefined>();
+  const clearQuery = useQueryStore((s) => s.clearQuery);
+
+  function handleCollectionChange(name: string) {
+    clearQuery();
+    setSelectedCollection(name);
+  }
 
   // Show empty state if no connection is active
   if (!activeConnectionId) {
@@ -35,7 +42,7 @@ function QueryPage() {
       <div className="border-b p-4">
         <div className="flex items-center gap-4">
           <label className="text-sm font-medium">Collection:</label>
-          <Select value={selectedCollection} onValueChange={setSelectedCollection}>
+          <Select value={selectedCollection} onValueChange={handleCollectionChange}>
             <SelectTrigger className="w-[250px]">
               <SelectValue placeholder="Select a collection" />
             </SelectTrigger>

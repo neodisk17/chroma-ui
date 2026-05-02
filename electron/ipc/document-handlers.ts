@@ -45,12 +45,49 @@ export function registerDocumentHandlers(): void {
       const { collection, error: collectionError } = await getCollectionOrError(client, request.collectionName);
       if (collectionError) return collectionError;
 
-      const total = await collection.count();
       const include: IncludeOption[] = ['documents', 'metadatas'];
       if (request.includeEmbeddings) {
         include.push('embeddings');
       }
 
+      const isSearching = !!request.searchQuery?.trim();
+
+      if (isSearching) {
+        const query = request.searchQuery!.trim();
+        const field = request.searchField || 'all';
+
+        // Build whereDocument filter for document-content search
+        const whereDocument = (field === 'document' || field === 'all')
+          ? { $contains: query }
+          : undefined;
+
+        // For ID search, pass the query as an ids filter (exact match)
+        const ids = field === 'id' ? [query] : undefined;
+
+        const results = await collection.get({
+          ...(ids ? { ids } : {}),
+          ...(whereDocument ? { whereDocument } : {}),
+          include,
+        });
+
+        // When searching, total = number of matching results (no separate count needed)
+        const matchingIds = results.ids || [];
+        const total = matchingIds.length;
+
+        // Apply pagination over the filtered results in-process
+        const start = request.offset;
+        const end = start + request.limit;
+
+        return successResponse({
+          ids: matchingIds.slice(start, end),
+          documents: (results.documents || []).slice(start, end),
+          metadatas: (results.metadatas || []).slice(start, end),
+          embeddings: request.includeEmbeddings ? ((results.embeddings || []).slice(start, end)) : null,
+          total,
+        });
+      }
+
+      const total = await collection.count();
       const results = await collection.get({
         limit: request.limit,
         offset: request.offset,
@@ -122,7 +159,25 @@ export function registerDocumentHandlers(): void {
 
       let embeddingFunction;
       if (needsEmbeddingFunction) {
-        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+        const embeddingResult = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+
+        if (embeddingResult.status !== 'success') {
+          if (embeddingResult.status === 'missing_config') {
+            return errorResponse(
+              `Cannot execute text query without embedding configuration.\n\n` +
+              `Collection '${request.collectionName}' was created without an embedding configuration.\n\n` +
+              `To fix this, you must either:\n` +
+              `  1. Provide a pre-computed embedding vector for your query, or\n` +
+              `  2. Create a new collection with an embedding configuration (OpenAI, HuggingFace, etc.)`
+            );
+          }
+
+          return errorResponse(
+            `Cannot generate query embedding: ${embeddingResult.errorMessage || 'Unknown error'}`
+          );
+        }
+
+        embeddingFunction = embeddingResult.embeddingFunction;
       }
 
       const { collection, error: collectionError } = await getCollectionOrError(
@@ -133,8 +188,8 @@ export function registerDocumentHandlers(): void {
       if (collectionError) return collectionError;
 
       let results: ChromaDBQueryResult | undefined;
-      const where = buildWhereClause(request.metadataFilters);
-      const whereDocument = buildWhereDocumentClause(request.documentFilters);
+      const where = buildWhereClause(request.metadataFilters, request.metadataLogicalOperator);
+      const whereDocument = buildWhereDocumentClause(request.documentFilters, request.documentLogicalOperator);
 
       if (request.queryType === 'similarity' || request.queryType === 'combined') {
         if (!request.queryText && !request.embeddingVector) {
@@ -212,7 +267,25 @@ export function registerDocumentHandlers(): void {
       // to auto-generate embeddings from the document text
       let embeddingFunction;
       if (!request.embedding) {
-        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+        const embeddingResult = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+
+        if (embeddingResult.status !== 'success') {
+          if (embeddingResult.status === 'missing_config') {
+            return errorResponse(
+              `Cannot add document without embedding.\n\n` +
+              `Collection '${request.collectionName}' was created without an embedding configuration.\n\n` +
+              `To fix this, you must either:\n` +
+              `  1. Provide a pre-computed embedding array, or\n` +
+              `  2. Create a new collection with an embedding configuration (OpenAI, HuggingFace, etc.)`
+            );
+          }
+
+          return errorResponse(
+            `Cannot generate embedding: ${embeddingResult.errorMessage || 'Unknown error'}`
+          );
+        }
+
+        embeddingFunction = embeddingResult.embeddingFunction;
       }
 
       const { collection, error: collectionError } = await getCollectionOrError(
@@ -249,7 +322,25 @@ export function registerDocumentHandlers(): void {
       // we need the embedding function to regenerate the embedding
       let embeddingFunction;
       if (request.document && !request.embedding) {
-        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+        const embeddingResult = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+
+        if (embeddingResult.status !== 'success') {
+          if (embeddingResult.status === 'missing_config') {
+            return errorResponse(
+              `Cannot update document without embedding.\n\n` +
+              `Collection '${request.collectionName}' was created without an embedding configuration.\n\n` +
+              `To fix this, you must either:\n` +
+              `  1. Provide a pre-computed embedding array, or\n` +
+              `  2. Create a new collection with an embedding configuration (OpenAI, HuggingFace, etc.)`
+            );
+          }
+
+          return errorResponse(
+            `Cannot generate embedding: ${embeddingResult.errorMessage || 'Unknown error'}`
+          );
+        }
+
+        embeddingFunction = embeddingResult.embeddingFunction;
       }
 
       const { collection, error: collectionError } = await getCollectionOrError(
@@ -306,7 +397,27 @@ export function registerDocumentHandlers(): void {
       // If any document is missing an embedding, we need the embedding function
       let embeddingFunction;
       if (hasDocumentWithoutEmbedding) {
-        embeddingFunction = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+        const embeddingResult = await getEmbeddingFunctionFromMetadata(client, request.collectionName);
+
+        if (embeddingResult.status !== 'success') {
+          const docsNeedingEmbeddings = request.documents.filter(d => !d.embedding).length;
+
+          if (embeddingResult.status === 'missing_config') {
+            return errorResponse(
+              `Cannot import ${docsNeedingEmbeddings} documents without embeddings.\n\n` +
+              `Collection '${request.collectionName}' was created without an embedding configuration.\n\n` +
+              `To fix this, you must either:\n` +
+              `  1. Add pre-computed embeddings to all documents in your import file, or\n` +
+              `  2. Create a new collection with an embedding configuration (OpenAI, HuggingFace, etc.)`
+            );
+          }
+
+          return errorResponse(
+            `Cannot generate embeddings: ${embeddingResult.errorMessage || 'Unknown error'}`
+          );
+        }
+
+        embeddingFunction = embeddingResult.embeddingFunction;
       }
 
       const { collection, error: collectionError } = await getCollectionOrError(

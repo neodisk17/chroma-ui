@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useQueryStore, type DocumentFilterOperator } from '@/stores/query-store';
+import { useQueryStore, type DocumentFilterOperator, type LogicalOperator } from '@/stores/query-store';
 import { Plus, X } from 'lucide-react';
 
 const DOCUMENT_FILTER_OPERATORS: {
@@ -29,8 +29,14 @@ const DOCUMENT_FILTER_OPERATORS: {
 ];
 
 export function DocumentFilterSection() {
-  const { documentFilters, addDocumentFilter, updateDocumentFilter, removeDocumentFilter } =
-    useQueryStore();
+  const {
+    documentFilters,
+    documentLogicalOperator,
+    addDocumentFilter,
+    updateDocumentFilter,
+    removeDocumentFilter,
+    setDocumentLogicalOperator,
+  } = useQueryStore();
 
   return (
     <div className="space-y-3 px-4">
@@ -47,7 +53,23 @@ export function DocumentFilterSection() {
       ) : (
         <>
           {documentFilters.map((filter, index) => (
-            <div key={filter.id} className="rounded-md border p-3 space-y-3 relative">
+            <div key={filter.id}>
+              {index > 0 && (
+                <div className="flex items-center justify-center gap-1 py-1">
+                  {(['$and', '$or'] as LogicalOperator[]).map((op) => (
+                    <Button
+                      key={op}
+                      size="sm"
+                      variant={documentLogicalOperator === op ? 'default' : 'outline'}
+                      className="h-6 px-2 text-xs"
+                      onClick={() => setDocumentLogicalOperator(op)}
+                    >
+                      {op === '$and' ? 'AND' : 'OR'}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            <div className="rounded-md border p-3 space-y-3 relative">
               <div className="absolute top-2 right-2">
                 <Button
                   variant="ghost"
@@ -98,18 +120,13 @@ export function DocumentFilterSection() {
                 />
               </div>
             </div>
+            </div>
           ))}
 
           <Button onClick={addDocumentFilter} variant="outline" size="sm" className="w-full">
             <Plus className="mr-2 h-4 w-4" />
             Add Another Filter
           </Button>
-
-          {documentFilters.length > 1 && (
-            <p className="text-xs text-muted-foreground text-center">
-              All conditions are combined with AND logic
-            </p>
-          )}
         </>
       )}
     </div>

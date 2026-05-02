@@ -24,8 +24,8 @@ import { useQueryStore } from '@/stores/query-store';
 const QUERY_KEYS = {
   collections: () => ['collections'] as const,
   collection: (name: string) => ['collection', name] as const,
-  documents: (collectionName: string, limit: number, offset: number, includeEmbeddings: boolean) =>
-    ['documents', collectionName, limit, offset, includeEmbeddings] as const,
+  documents: (collectionName: string, limit: number, offset: number, includeEmbeddings: boolean, searchQuery?: string, searchField?: string) =>
+    ['documents', collectionName, limit, offset, includeEmbeddings, searchQuery, searchField] as const,
   document: (collectionName: string, documentId: string) =>
     ['document', collectionName, documentId] as const,
 };
@@ -309,14 +309,16 @@ export function useDeleteCollection() {
  */
 export function useDocuments(
   collectionName: string | undefined,
-  options: { limit?: number; offset?: number; includeEmbeddings?: boolean } = {}
+  options: { limit?: number; offset?: number; includeEmbeddings?: boolean; searchQuery?: string; searchField?: string } = {}
 ) {
   const limit = options.limit || 100;
   const offset = options.offset || 0;
   const includeEmbeddings = options.includeEmbeddings || false;
+  const searchQuery = options.searchQuery || '';
+  const searchField = options.searchField || 'all';
 
   return useQuery({
-    queryKey: QUERY_KEYS.documents(collectionName || '', limit, offset, includeEmbeddings),
+    queryKey: QUERY_KEYS.documents(collectionName || '', limit, offset, includeEmbeddings, searchQuery, searchField),
     queryFn: async (): Promise<QueryDocumentsResponse> => {
       if (!collectionName) {
         return {
@@ -330,7 +332,7 @@ export function useDocuments(
 
       const response = await window.electronAPI.invoke<QueryDocumentsResponse>(
         IPC_CHANNELS.DOCUMENT_QUERY,
-        { collectionName, limit, offset, includeEmbeddings }
+        { collectionName, limit, offset, includeEmbeddings, searchQuery: searchQuery || undefined, searchField }
       );
 
       if (!response.success) {
@@ -583,5 +585,38 @@ export function useBulkImport() {
     onError: (error) => {
       toast.error(`Failed to import documents: ${error instanceof Error ? error.message : 'Unknown error'}`);
     },
+  });
+}
+
+/**
+ * Hook to check if a collection can accept documents without embeddings
+ */
+export function useCollectionEmbeddingStatus(collectionName: string | undefined) {
+  return useQuery({
+    queryKey: ['collection-embedding-status', collectionName],
+    queryFn: async () => {
+      if (!collectionName) return null;
+
+      const collection = await window.electronAPI.invoke<Collection>(
+        IPC_CHANNELS.COLLECTION_GET,
+        { name: collectionName }
+      );
+
+      if (!collection.success || !collection.data) {
+        return null;
+      }
+
+      const metadata = collection.data.metadata || {};
+      const hasEmbeddingConfig = !!metadata['embedding_config'];
+      const embeddingProvider = metadata['embedding_provider'] as string | undefined;
+
+      return {
+        hasConfig: hasEmbeddingConfig,
+        provider: embeddingProvider,
+        canAutoEmbed: hasEmbeddingConfig,
+      };
+    },
+    enabled: !!collectionName,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }

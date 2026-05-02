@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useQueryStore, type FilterOperator } from '@/stores/query-store';
+import { useQueryStore, type FilterOperator, type LogicalOperator } from '@/stores/query-store';
 import { useDocuments } from '@/hooks/use-chromadb';
 import { Plus, X, ChevronsUpDown, Check } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,8 +37,14 @@ const FILTER_OPERATORS: { value: FilterOperator; label: string; description: str
 ];
 
 export function MetadataFilterSection({ collectionName }: MetadataFilterSectionProps) {
-  const { metadataFilters, addMetadataFilter, updateMetadataFilter, removeMetadataFilter } =
-    useQueryStore();
+  const {
+    metadataFilters,
+    metadataLogicalOperator,
+    addMetadataFilter,
+    updateMetadataFilter,
+    removeMetadataFilter,
+    setMetadataLogicalOperator,
+  } = useQueryStore();
 
   // Fetch documents to extract metadata keys
   const { data: documentsData } = useDocuments(collectionName, { limit: 100 });
@@ -120,7 +126,23 @@ export function MetadataFilterSection({ collectionName }: MetadataFilterSectionP
       ) : (
         <>
           {metadataFilters.map((filter, index) => (
-            <div key={filter.id} className="rounded-md border p-3 space-y-3 relative">
+            <div key={filter.id}>
+              {index > 0 && (
+                <div className="flex items-center justify-center gap-1 py-1">
+                  {(['$and', '$or'] as LogicalOperator[]).map((op) => (
+                    <Button
+                      key={op}
+                      size="sm"
+                      variant={metadataLogicalOperator === op ? 'default' : 'outline'}
+                      className="h-6 px-2 text-xs"
+                      onClick={() => setMetadataLogicalOperator(op)}
+                    >
+                      {op === '$and' ? 'AND' : 'OR'}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            <div className="rounded-md border p-3 space-y-3 relative">
               <div className="absolute top-2 right-2">
                 <Button
                   variant="ghost"
@@ -174,18 +196,13 @@ export function MetadataFilterSection({ collectionName }: MetadataFilterSectionP
                 {getValueInput(filter.id, filter.operator, filter.value)}
               </div>
             </div>
+            </div>
           ))}
 
           <Button onClick={addMetadataFilter} variant="outline" size="sm" className="w-full">
             <Plus className="mr-2 h-4 w-4" />
             Add Another Filter
           </Button>
-
-          {metadataFilters.length > 1 && (
-            <p className="text-xs text-muted-foreground text-center">
-              All conditions are combined with AND logic
-            </p>
-          )}
         </>
       )}
     </div>

@@ -8,6 +8,7 @@ import type { Metadata } from '../types/chromadb.types';
 
 export type FilterOperator = '$eq' | '$ne' | '$gt' | '$gte' | '$lt' | '$lte' | '$in' | '$nin';
 export type DocumentFilterOperator = '$contains' | '$not_contains';
+export type LogicalOperator = '$and' | '$or';
 export type QueryType = 'similarity' | 'filter' | 'combined';
 
 export interface FilterCondition {
@@ -52,6 +53,8 @@ interface QueryState {
   nResults: number;
   metadataFilters: FilterCondition[];
   documentFilters: DocumentFilterCondition[];
+  metadataLogicalOperator: LogicalOperator;
+  documentLogicalOperator: LogicalOperator;
 
   // Query execution
   results: QueryResult[] | null;
@@ -65,6 +68,8 @@ interface QueryState {
   setQueryType: (type: QueryType) => void;
   setQueryText: (text: string) => void;
   setNResults: (n: number) => void;
+  setMetadataLogicalOperator: (op: LogicalOperator) => void;
+  setDocumentLogicalOperator: (op: LogicalOperator) => void;
 
   // Actions - Metadata filters
   addMetadataFilter: () => void;
@@ -107,6 +112,8 @@ export const useQueryStore = create<QueryState>()(
       nResults: 10,
       metadataFilters: [],
       documentFilters: [],
+      metadataLogicalOperator: '$and',
+      documentLogicalOperator: '$and',
       results: null,
       isExecuting: false,
       error: null,
@@ -116,6 +123,8 @@ export const useQueryStore = create<QueryState>()(
       setQueryType: (type) => set({ queryType: type }),
       setQueryText: (text) => set({ queryText: text }),
       setNResults: (n) => set({ nResults: n }),
+      setMetadataLogicalOperator: (op) => set({ metadataLogicalOperator: op }),
+      setDocumentLogicalOperator: (op) => set({ documentLogicalOperator: op }),
 
       // Metadata filters
       addMetadataFilter: () => {
@@ -181,6 +190,8 @@ export const useQueryStore = create<QueryState>()(
           nResults: 10,
           metadataFilters: [],
           documentFilters: [],
+          metadataLogicalOperator: '$and',
+          documentLogicalOperator: '$and',
           results: null,
           error: null,
         });
@@ -236,6 +247,8 @@ export const useQueryStore = create<QueryState>()(
         nResults: state.nResults,
         metadataFilters: state.metadataFilters,
         documentFilters: state.documentFilters,
+        metadataLogicalOperator: state.metadataLogicalOperator,
+        documentLogicalOperator: state.documentLogicalOperator,
         templates: state.templates,
       }),
     }

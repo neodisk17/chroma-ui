@@ -133,7 +133,30 @@ async function createLocalEmbeddingFunction(
   modelId: string,
   dtype: DType = 'fp32'
 ): Promise<EmbeddingFunction> {
-  const { pipeline, env } = await import('@xenova/transformers');
+  const { pipeline, env, Tensor } = await import('@xenova/transformers');
+
+  if (!Object.getOwnPropertyDescriptor(Tensor.prototype, 'location')) {
+    Object.defineProperty(Tensor.prototype, 'location', {
+      get() { return (this as { dataLocation?: string }).dataLocation ?? 'cpu'; },
+      configurable: true,
+    });
+  }
+  if (!Object.getOwnPropertyDescriptor(Tensor.prototype, 'cpuData')) {
+    Object.defineProperty(Tensor.prototype, 'cpuData', {
+      set(value: unknown) {
+        // Promote to a plain own property so this setter won't fire again
+        Object.defineProperty(this, 'cpuData', {
+          value, writable: true, configurable: true, enumerable: true,
+        });
+        // Mirror into `data` (overwriting the undefined class-field initializer)
+        Object.defineProperty(this, 'data', {
+          value, writable: true, configurable: true, enumerable: true,
+        });
+      },
+      configurable: true,
+      enumerable: false,
+    });
+  }
 
   initCacheDir();
   env.cacheDir = getModelCacheDir();

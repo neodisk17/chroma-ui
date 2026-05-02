@@ -8,10 +8,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, Upload, FileJson, FileSpreadsheet, Loader2, CheckCircle, Download } from 'lucide-react';
-import { useBulkImport } from '@/hooks/use-chromadb';
+import { AlertCircle, Upload, FileJson, FileSpreadsheet, Loader2, CheckCircle, Download, Info } from 'lucide-react';
+import { useBulkImport, useCollectionEmbeddingStatus } from '@/hooks/use-chromadb';
 import Papa from 'papaparse';
 import type { Metadata } from '@/types/chromadb.types';
 
@@ -53,6 +53,7 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const bulkImport = useBulkImport();
+  const embeddingStatus = useCollectionEmbeddingStatus(collectionName);
 
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -290,6 +291,50 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
             </div>
           )}
 
+          {/* Embedding Configuration Warning */}
+          {file && !isParsing && documents.length > 0 && embeddingStatus.data && (
+            (() => {
+              const docsNeedingEmbeddings = documents.filter(d => !d.embedding).length;
+              const cannotAutoEmbed = docsNeedingEmbeddings > 0 && !embeddingStatus.data.canAutoEmbed;
+
+              if (cannotAutoEmbed) {
+                return (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Cannot Import Documents</AlertTitle>
+                    <AlertDescription>
+                      <p className="mt-1">
+                        <strong>{docsNeedingEmbeddings}</strong> documents in this file do not have pre-computed embeddings.
+                      </p>
+                      <p className="mt-2">
+                        Collection <strong>{collectionName}</strong> was created without an embedding configuration,
+                        so embeddings cannot be auto-generated.
+                      </p>
+                      <div className="mt-3 text-sm">
+                        <p className="font-medium">To proceed, you must either:</p>
+                        <ul className="mt-1 ml-4 list-disc space-y-1">
+                          <li>Add pre-computed embeddings to all documents in your import file</li>
+                          <li>Create a new collection with an embedding configuration (OpenAI, HuggingFace, etc.)</li>
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                );
+              } else if (docsNeedingEmbeddings > 0 && embeddingStatus.data.canAutoEmbed) {
+                return (
+                  <Alert className="mb-4">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>{docsNeedingEmbeddings}</strong> documents will have embeddings auto-generated
+                      using the <strong>{embeddingStatus.data.provider || 'default'}</strong> embedding model.
+                    </AlertDescription>
+                  </Alert>
+                );
+              }
+              return null;
+            })()
+          )}
+
           {/* Import Progress */}
           {bulkImport.isPending && (
             <div className="space-y-2">
@@ -340,10 +385,28 @@ export function BulkImportDialog({ open, onClose, collectionName }: BulkImportDi
           </Button>
           <Button
             onClick={handleImport}
-            disabled={documents.length === 0 || bulkImport.isPending || isParsing}
+            disabled={
+              documents.length === 0 ||
+              bulkImport.isPending ||
+              isParsing ||
+              // Disable if docs need embeddings but collection can't auto-embed
+              (documents.filter(d => !d.embedding).length > 0 &&
+               embeddingStatus.data !== null &&
+               embeddingStatus.data !== undefined &&
+               !embeddingStatus.data.canAutoEmbed)
+            }
           >
-            {bulkImport.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import {documents.length > 0 && `${documents.length} Documents`}
+            {bulkImport.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Import {documents.length > 0 && `${documents.length} Documents`}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

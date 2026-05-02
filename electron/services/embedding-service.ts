@@ -453,6 +453,18 @@ export class EmbeddingService {
     }
   }
 
+  async warmupModel(config: EmbeddingConfig): Promise<{ success: boolean; error?: string }> {
+    try {
+      const parsed = EmbeddingConfigSchema.parse(config);
+      if (parsed.provider === 'local') {
+        await this.createEmbeddingFunction(parsed);
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   /**
    * Clear cached embedders
    */

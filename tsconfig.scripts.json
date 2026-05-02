@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": false,
+    "outDir": "./dist-scripts",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "include": ["scripts/**/*.ts", "shared/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-electron", "src"]
+}
