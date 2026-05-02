@@ -171,13 +171,16 @@ export function registerEmbeddingHandlers(): void {
         const config = EmbeddingConfigSchema.parse(requestData);
 
         if (config.provider === 'openai') {
-          // For OpenAI, check if API key exists
           const hasKey = await embeddingService.hasOpenAIApiKey();
           return successResponse({ ready: hasKey });
         }
 
-        // For local models, check if already cached
-        const ready = embeddingService.isModelReady(config);
+        if (config.provider === 'ollama' || config.provider === 'huggingface') {
+          return successResponse({ ready: true });
+        }
+
+        // For local models, check if the embedder is already cached
+        const ready = embeddingService.isModelCached(config);
         return successResponse({ ready });
       } catch (error) {
         return handleError(error, 'embedding:is-ready', 'Failed to check model status');

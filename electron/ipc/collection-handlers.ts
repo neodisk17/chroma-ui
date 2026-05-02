@@ -154,7 +154,9 @@ export function registerCollectionHandlers(): void {
       const { collection, error: collectionError } = await getCollectionOrError(client, request.name);
       if (collectionError) return collectionError;
 
-      await collection.modify({ metadata: request.metadata || {} });
+      // Merge with existing metadata — ChromaDB's modify() replaces, not merges
+      const existing = (collection.metadata as Record<string, unknown>) || {};
+      await collection.modify({ metadata: { ...existing, ...request.metadata } });
 
       // Get updated collection
       const updated = await client.getCollection({ name: request.name });

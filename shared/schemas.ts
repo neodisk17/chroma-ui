@@ -346,7 +346,7 @@ export type BulkImportResponse = z.infer<typeof BulkImportResponseSchema>;
 // ============================================================================
 
 // Embedding Provider Enum (includes 'local' for @xenova/transformers)
-export const EmbeddingProviderSchema = z.enum(['local', 'openai', 'huggingface']);
+export const EmbeddingProviderSchema = z.enum(['local', 'openai', 'huggingface', 'ollama']);
 export type EmbeddingProvider = z.infer<typeof EmbeddingProviderSchema>;
 
 // DType for local model quantization
@@ -384,11 +384,20 @@ export const HuggingFaceEmbeddingConfigSchema = z.object({
 });
 export type HuggingFaceEmbeddingConfig = z.infer<typeof HuggingFaceEmbeddingConfigSchema>;
 
+// Ollama Embedding Config (uses local Ollama server)
+export const OllamaEmbeddingConfigSchema = z.object({
+  provider: z.literal('ollama'),
+  model: z.string().min(1).default('nomic-embed-text'),
+  baseUrl: z.string().url().default('http://localhost:11434'),
+});
+export type OllamaEmbeddingConfig = z.infer<typeof OllamaEmbeddingConfigSchema>;
+
 // Discriminated Union for Embedding Config
 export const EmbeddingConfigSchema = z.discriminatedUnion('provider', [
   LocalEmbeddingConfigSchema,
   OpenAIEmbeddingConfigSchema,
   HuggingFaceEmbeddingConfigSchema,
+  OllamaEmbeddingConfigSchema,
 ]);
 export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
 

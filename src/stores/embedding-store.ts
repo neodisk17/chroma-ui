@@ -6,6 +6,7 @@ import type {
   LocalEmbeddingConfig,
   OpenAIEmbeddingConfig,
   HuggingFaceEmbeddingConfig,
+  OllamaEmbeddingConfig,
   DType,
   OpenAIModel,
   ModelDownloadProgress,
@@ -23,6 +24,12 @@ const DEFAULT_HUGGINGFACE_CONFIG: HuggingFaceEmbeddingConfig = {
   model: 'Xenova/all-MiniLM-L6-v2',
 };
 
+const DEFAULT_OLLAMA_CONFIG: OllamaEmbeddingConfig = {
+  provider: 'ollama',
+  model: 'nomic-embed-text',
+  baseUrl: 'http://localhost:11434',
+};
+
 interface EmbeddingState {
   // Current selection
   selectedProvider: EmbeddingProvider;
@@ -31,6 +38,7 @@ interface EmbeddingState {
   localConfig: LocalEmbeddingConfig;
   openaiConfig: OpenAIEmbeddingConfig;
   huggingfaceConfig: HuggingFaceEmbeddingConfig;
+  ollamaConfig: OllamaEmbeddingConfig;
 
   // API key status (cached)
   hasOpenAIKey: boolean;
@@ -45,7 +53,10 @@ interface EmbeddingState {
   setOpenAIModel: (model: OpenAIModel) => void;
   setOpenAIDimensions: (dimensions: number | undefined) => void;
   setHuggingFaceModel: (model: string) => void;
+  setOllamaModel: (model: string) => void;
+  setOllamaBaseUrl: (baseUrl: string) => void;
   setHasOpenAIKey: (hasKey: boolean) => void;
+  loadConfig: (config: EmbeddingConfig) => void;
   setDownloadProgress: (modelId: string, progress: ModelDownloadProgress) => void;
   clearDownloadProgress: (modelId: string) => void;
 
@@ -62,6 +73,7 @@ export const useEmbeddingStore = create<EmbeddingState>()(
       localConfig: DEFAULT_EMBEDDING_CONFIG,
       openaiConfig: DEFAULT_OPENAI_CONFIG,
       huggingfaceConfig: DEFAULT_HUGGINGFACE_CONFIG,
+      ollamaConfig: DEFAULT_OLLAMA_CONFIG,
       hasOpenAIKey: false,
       downloadProgress: {},
 
@@ -93,6 +105,29 @@ export const useEmbeddingStore = create<EmbeddingState>()(
           huggingfaceConfig: { ...state.huggingfaceConfig, model },
         })),
 
+      setOllamaModel: (model) =>
+        set((state) => ({
+          ollamaConfig: { ...state.ollamaConfig, model },
+        })),
+
+      setOllamaBaseUrl: (baseUrl) =>
+        set((state) => ({
+          ollamaConfig: { ...state.ollamaConfig, baseUrl },
+        })),
+
+      loadConfig: (config) => {
+        set({ selectedProvider: config.provider });
+        if (config.provider === 'local') {
+          set((s) => ({ localConfig: { ...s.localConfig, model: config.model, dtype: config.dtype } }));
+        } else if (config.provider === 'openai') {
+          set((s) => ({ openaiConfig: { ...s.openaiConfig, model: config.model, dimensions: config.dimensions } }));
+        } else if (config.provider === 'huggingface') {
+          set((s) => ({ huggingfaceConfig: { ...s.huggingfaceConfig, model: config.model } }));
+        } else if (config.provider === 'ollama') {
+          set((s) => ({ ollamaConfig: { ...s.ollamaConfig, model: config.model, baseUrl: config.baseUrl } }));
+        }
+      },
+
       setHasOpenAIKey: (hasKey) => set({ hasOpenAIKey: hasKey }),
 
       setDownloadProgress: (modelId, progress) =>
@@ -113,6 +148,8 @@ export const useEmbeddingStore = create<EmbeddingState>()(
             return state.openaiConfig;
           case 'huggingface':
             return state.huggingfaceConfig;
+          case 'ollama':
+            return state.ollamaConfig;
           case 'local':
           default:
             return state.localConfig;
@@ -125,6 +162,7 @@ export const useEmbeddingStore = create<EmbeddingState>()(
           localConfig: DEFAULT_EMBEDDING_CONFIG,
           openaiConfig: DEFAULT_OPENAI_CONFIG,
           huggingfaceConfig: DEFAULT_HUGGINGFACE_CONFIG,
+          ollamaConfig: DEFAULT_OLLAMA_CONFIG,
           downloadProgress: {},
         }),
     }),
@@ -136,6 +174,7 @@ export const useEmbeddingStore = create<EmbeddingState>()(
         localConfig: state.localConfig,
         openaiConfig: state.openaiConfig,
         huggingfaceConfig: state.huggingfaceConfig,
+        ollamaConfig: state.ollamaConfig,
       }),
     }
   )

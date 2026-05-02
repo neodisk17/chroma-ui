@@ -2,7 +2,7 @@ import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Download } from 'lucide-react';
+import { Loader2, Download, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateCollection, useUpdateCollection } from '../../hooks/use-chromadb';
 import { useWarmupModel, useModelDownloadProgress, useCollectionOpenAIKeyStatus } from '../../hooks/use-embedding';
@@ -39,6 +39,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Progress } from '../ui/progress';
 import { EmbeddingConfigPanel } from '../embeddings/EmbeddingConfigPanel';
 import { CollectionApiKeyPanel } from '../embeddings/CollectionApiKeyPanel';
+import { ExternalCollectionConfigDialog } from '../embeddings/ExternalCollectionConfigDialog';
 import { useEmbeddingStore } from '../../stores/embedding-store';
 import type { Collection, DistanceFunction, EmbeddingConfig } from '../../../shared/schemas';
 
@@ -65,6 +66,7 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
   const isEditMode = !!collection;
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [isEmbeddingOpen, setIsEmbeddingOpen] = useState(false);
+  const [isEmbeddingConfigOpen, setIsEmbeddingConfigOpen] = useState(false);
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [showModelChangeWarning, setShowModelChangeWarning] = useState(false);
@@ -74,7 +76,7 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
   const originalModelRef = useRef<string>('');
 
   // Get embedding config from store
-  const { buildEmbeddingConfig, resetToDefaults, selectedProvider, hasOpenAIKey } =
+  const { buildEmbeddingConfig, resetToDefaults, loadConfig, selectedProvider, hasOpenAIKey } =
     useEmbeddingStore();
 
   // Model warmup and download progress
@@ -306,7 +308,9 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
                         ? 'Default (Local)'
                         : selectedProvider === 'openai'
                           ? 'OpenAI'
-                          : 'HuggingFace'}
+                          : selectedProvider === 'ollama'
+                            ? 'Ollama'
+                            : 'HuggingFace'}
                       )
                     </span>
                   </span>
@@ -375,18 +379,56 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
             <Textarea
               id="metadata"
               {...metadataRest}
-              onChange={handleMetadataChange}
+              onChange={isEditMode ? undefined : handleMetadataChange}
+              readOnly={isEditMode}
               placeholder="{}"
               rows={4}
-              className={`font-mono text-xs ${metadataError ? 'border-destructive' : ''}`}
+              className={`font-mono text-xs ${isEditMode ? 'bg-muted text-muted-foreground cursor-default select-text' : ''} ${metadataError ? 'border-destructive' : ''}`}
             />
             {metadataError && (
               <p className="text-xs text-destructive">Invalid JSON: {metadataError}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Optional metadata to store with the collection (must be valid JSON)
+              {isEditMode
+                ? 'Collection metadata is read-only. Use the Update Embedding Configuration button below to change the embedding model.'
+                : 'Optional metadata to store with the collection (must be valid JSON)'}
             </p>
           </div>
+
+          {/* Update Embedding Config (Edit mode only) */}
+          {isEditMode && (
+            <div className="rounded-lg border p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Embedding Configuration</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {collection.metadata?.embedding_provider
+                    ? `Provider: ${collection.metadata.embedding_provider}${collection.metadata.embedding_model ? ` · Model: ${collection.metadata.embedding_model}` : ''}`
+                    : 'No embedding configuration stored on this collection.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const configStr = collection?.metadata?.embedding_config;
+                  if (configStr && typeof configStr === 'string') {
+                    try {
+                      loadConfig(JSON.parse(configStr));
+                    } catch {
+                      resetToDefaults();
+                    }
+                  } else {
+                    resetToDefaults();
+                  }
+                  setIsEmbeddingConfigOpen(true);
+                }}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Update Embedding Configuration
+              </Button>
+            </div>
+          )}
 
           {/* Form Actions */}
           <DialogFooter>
@@ -410,6 +452,19 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
         </form>
       </DialogContent>
     </Dialog>
+
+    {isEditMode && collection && (
+      <ExternalCollectionConfigDialog
+        open={isEmbeddingConfigOpen}
+        collectionName={collection.name}
+        isUpdate
+        onSaved={() => {
+          setIsEmbeddingConfigOpen(false);
+          toast.success('Embedding configuration updated');
+        }}
+        onCancel={() => setIsEmbeddingConfigOpen(false)}
+      />
+    )}
 
     <AlertDialog open={showModelChangeWarning} onOpenChange={setShowModelChangeWarning}>
       <AlertDialogContent>

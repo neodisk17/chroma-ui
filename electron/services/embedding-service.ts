@@ -6,6 +6,7 @@ import type {
   LocalEmbeddingConfig,
   OpenAIEmbeddingConfig,
   HuggingFaceEmbeddingConfig,
+  OllamaEmbeddingConfig,
   HuggingFaceModelPreset,
   TestEmbeddingResponse,
 } from '../../shared/schemas';
@@ -166,6 +167,44 @@ class HuggingFaceInferenceEmbeddingFunction implements EmbeddingFunction {
     }
 
     throw new Error('Unexpected response format from HuggingFace API');
+  }
+}
+
+/**
+ * Ollama Embedding Function implementation
+ */
+class OllamaEmbeddingFunction implements EmbeddingFunction {
+  private model: string;
+  private baseUrl: string;
+
+  constructor(model: string, baseUrl: string) {
+    this.model = model;
+    this.baseUrl = baseUrl.replace(/\/$/, '');
+  }
+
+  async generate(texts: string[]): Promise<number[][]> {
+    const embeddings: number[][] = [];
+
+    for (const text of texts) {
+      const response = await fetch(`${this.baseUrl}/api/embeddings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: this.model, prompt: text }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text().catch(() => 'Unknown error');
+        throw new Error(`Ollama API error: ${response.status} - ${error}`);
+      }
+
+      const data = (await response.json()) as { embedding: number[] };
+      if (!Array.isArray(data.embedding)) {
+        throw new Error('Ollama returned unexpected response format');
+      }
+      embeddings.push(data.embedding);
+    }
+
+    return embeddings;
   }
 }
 
@@ -418,6 +457,12 @@ export class EmbeddingService {
         break;
       }
 
+      case 'ollama': {
+        const ollamaConfig = parsed as OllamaEmbeddingConfig;
+        embedder = new OllamaEmbeddingFunction(ollamaConfig.model, ollamaConfig.baseUrl);
+        break;
+      }
+
       default:
         throw new Error(`Unknown embedding provider: ${(parsed as { provider: string }).provider}`);
     }
@@ -474,6 +519,11 @@ export class EmbeddingService {
   /**
    * Clear cached embedders
    */
+  isModelCached(config: EmbeddingConfig): boolean {
+    const cacheKey = JSON.stringify({ config, collection: undefined });
+    return this.activeEmbedders.has(cacheKey);
+  }
+
   clearCache(): void {
     this.activeEmbedders.clear();
   }

@@ -43,6 +43,7 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
     localConfig,
     openaiConfig,
     huggingfaceConfig,
+    ollamaConfig,
     hasOpenAIKey,
     setProvider,
     setLocalModel,
@@ -50,6 +51,8 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
     setOpenAIModel,
     setOpenAIDimensions,
     setHuggingFaceModel,
+    setOllamaModel,
+    setOllamaBaseUrl,
     buildEmbeddingConfig,
   } = useEmbeddingStore();
 
@@ -100,9 +103,9 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
   const availableModels = Array.isArray(modelsData) ? modelsData : [];
 
   return (
-    <div className="space-y-4">
-      {/* Provider Selection */}
-      <div className="space-y-2">
+    <div className="flex flex-col gap-4">
+      {/* Provider Selection — fixed */}
+      <div className="space-y-2 shrink-0">
         <Label>Embedding Provider</Label>
         <Select value={selectedProvider} onValueChange={handleProviderChange}>
           <SelectTrigger>
@@ -112,6 +115,7 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
             <SelectItem value="local">Default (Local)</SelectItem>
             <SelectItem value="openai">OpenAI</SelectItem>
             <SelectItem value="huggingface">HuggingFace</SelectItem>
+            <SelectItem value="ollama">Ollama</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
@@ -120,8 +124,13 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
           {selectedProvider === 'openai' && 'Uses OpenAI embedding API (requires API key)'}
           {selectedProvider === 'huggingface' &&
             'Uses HuggingFace transformer models (downloaded locally)'}
+          {selectedProvider === 'ollama' &&
+            'Uses a locally running Ollama server (must be running on your machine)'}
         </p>
       </div>
+
+      {/* Scrollable provider config area */}
+      <div className="overflow-y-auto max-h-[280px] space-y-4 pr-1 min-h-0">
 
       {/* Local Provider Config */}
       {selectedProvider === 'local' && (
@@ -409,6 +418,44 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
         </div>
       )}
 
+      {/* Ollama Provider Config */}
+      {selectedProvider === 'ollama' && (
+        <div className="space-y-4 rounded-lg border p-4">
+          <div className="space-y-2">
+            <Label>Server URL</Label>
+            <Input
+              type="url"
+              placeholder="http://localhost:11434"
+              value={ollamaConfig.baseUrl}
+              onChange={(e) => {
+                setOllamaBaseUrl(e.target.value);
+                onConfigChange?.();
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Base URL of your Ollama server. Default is http://localhost:11434
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Embedding Model</Label>
+            <Input
+              type="text"
+              placeholder="nomic-embed-text"
+              value={ollamaConfig.model}
+              onChange={(e) => {
+                setOllamaModel(e.target.value);
+                onConfigChange?.();
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Name of the Ollama model to use for embeddings (e.g. nomic-embed-text,
+              mxbai-embed-large, all-minilm). Run{' '}
+              <code className="font-mono">ollama pull nomic-embed-text</code> to download it.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Download Progress */}
       {downloadProgress && (
         <div className="space-y-2 rounded-lg border p-4">
@@ -423,8 +470,10 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
         </div>
       )}
 
-      {/* Test Button */}
-      <div className="flex items-center gap-2">
+      </div>{/* end scrollable area */}
+
+      {/* Test Button — fixed */}
+      <div className="flex items-center gap-2 shrink-0">
         <Button
           type="button"
           variant="outline"
