@@ -95,9 +95,9 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
     return (
       <div className="p-4">
         <div className="animate-pulse space-y-2">
-          <div className="h-10 bg-gray-200 rounded"></div>
-          <div className="h-10 bg-gray-200 rounded"></div>
-          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-10 bg-secondary rounded" />
+          <div className="h-10 bg-secondary rounded" />
+          <div className="h-10 bg-secondary rounded" />
         </div>
       </div>
     );
@@ -106,12 +106,12 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b border-border">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold">Connections</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Connections</h2>
           <button
             onClick={onNewConnection}
-            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md"
+            className="px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs rounded-md transition-colors"
             title="New Connection (Cmd/Ctrl+Shift+C)"
           >
             + New
@@ -122,11 +122,11 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
       {/* Connection List */}
       <div className="flex-1 overflow-y-auto">
         {connections.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <p className="mb-4">No connections configured</p>
+          <div className="p-8 text-center text-muted-foreground">
+            <p className="mb-4 text-sm">No connections configured</p>
             <button
               onClick={onNewConnection}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+              className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-sm rounded-md transition-colors"
             >
               Add Connection
             </button>
@@ -138,8 +138,8 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
                 key={connection.id}
                 className={`relative p-3 rounded-md cursor-pointer transition-colors ${
                   connection.id === activeConnectionId
-                    ? 'bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-600'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-primary/10 border-l-2 border-primary'
+                    : 'hover:bg-accent'
                 }`}
                 onClick={() => handleConnect(connection.id)}
               >
@@ -155,13 +155,13 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate font-mono mt-0.5">
                       {connection.useSSL ? 'https://' : 'http://'}
                       {connection.host}:{connection.port}
                     </p>
                     <div className="flex items-center space-x-2 mt-1">
                       {connection.authType !== 'none' && (
-                        <span className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded">
+                        <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
                           {connection.authType}
                         </span>
                       )}
@@ -174,7 +174,7 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
                       e.stopPropagation();
                       setShowDeleteConfirm(connection.id);
                     }}
-                    className="ml-2 p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-600"
+                    className="ml-2 p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive transition-colors"
                     title="Delete connection"
                   >
                     <svg
@@ -197,20 +197,20 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
                 {/* Delete Confirmation */}
                 {showDeleteConfirm === connection.id && (
                   <div
-                    className="absolute inset-0 bg-white dark:bg-gray-800 rounded-md p-3 shadow-lg border-2 border-red-500"
+                    className="absolute inset-0 bg-card rounded-md p-3 shadow-lg border border-destructive/50"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <p className="text-sm mb-2">Delete this connection?</p>
+                    <p className="text-xs mb-2 text-foreground">Delete this connection?</p>
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => setShowDeleteConfirm(null)}
-                        className="px-2 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded"
+                        className="px-2 py-1 text-xs bg-secondary hover:bg-accent rounded transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => handleDelete(connection.id)}
-                        className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded"
+                        className="px-2 py-1 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded transition-colors"
                       >
                         Delete
                       </button>
@@ -225,10 +225,10 @@ export function ConnectionList({ onNewConnection }: ConnectionListProps) {
 
       {/* Loading Overlay */}
       {isConnecting && (
-        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-sm">Connecting...</p>
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-card p-4 rounded-lg shadow-lg border border-border">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto" />
+            <p className="mt-2 text-xs text-muted-foreground text-center">Connecting…</p>
           </div>
         </div>
       )}

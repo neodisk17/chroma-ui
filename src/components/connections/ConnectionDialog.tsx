@@ -2,12 +2,31 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2, Plug, CheckCircle2, XCircle, Wifi } from 'lucide-react';
 import {
   CreateConnectionRequestSchema,
   CreateConnectionRequest,
   ConnectionProfile
 } from '../../../shared/schemas';
 import { useConnectionStore } from '../../stores/connection-store';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 interface ConnectionDialogProps {
   isOpen: boolean;
@@ -28,6 +47,7 @@ export function ConnectionDialog({ isOpen, onClose, connection }: ConnectionDial
     formState: { errors, isSubmitting },
     watch,
     reset,
+    setValue,
   } = useForm<CreateConnectionRequest>({
     resolver: zodResolver(CreateConnectionRequestSchema) as Resolver<CreateConnectionRequest>,
     defaultValues: {
@@ -43,14 +63,12 @@ export function ConnectionDialog({ isOpen, onClose, connection }: ConnectionDial
 
   useEffect(() => {
     if (isOpen && connection) {
-      // Populate form with existing connection data
       reset({
         name: connection.name,
         host: connection.host,
         port: connection.port,
         authType: connection.authType,
         useSSL: connection.useSSL,
-        // Note: We don't populate credentials for security reasons
       });
     } else if (!isOpen) {
       reset({
@@ -66,26 +84,18 @@ export function ConnectionDialog({ isOpen, onClose, connection }: ConnectionDial
 
   const onSubmit = async (data: CreateConnectionRequest) => {
     let result;
-
     if (isEditMode && connection) {
-      result = await updateConnection({
-        id: connection.id,
-        ...data,
-      });
+      result = await updateConnection({ id: connection.id, ...data });
     } else {
       result = await createConnection(data);
     }
-
-    if (result) {
-      onClose();
-    }
+    if (result) onClose();
   };
 
   const handleTestConnection = async () => {
     const formData = watch();
     setIsTesting(true);
     setTestResult(null);
-
     const result = await testConnection({
       host: formData.host,
       port: formData.port,
@@ -95,177 +105,241 @@ export function ConnectionDialog({ isOpen, onClose, connection }: ConnectionDial
       username: formData.username,
       password: formData.password,
     });
-
     setTestResult(result);
     setIsTesting(false);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-2xl font-bold mb-4">
-          {isEditMode ? 'Edit Connection' : 'New Connection'}
-        </h2>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="sm:max-w-[520px] p-0 overflow-hidden gap-0"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        {/* Cyan accent bar at top */}
+        <div className="h-0.5 w-full bg-gradient-to-r from-primary/0 via-primary to-primary/0" />
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Connection Name */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Connection Name *</label>
-            <input
-              {...register('name')}
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="My ChromaDB"
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-            )}
-          </div>
+        <div className="p-6">
+          <DialogHeader className="mb-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 border border-primary/20">
+                <Plug className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-semibold">
+                  {isEditMode ? 'Edit Connection' : 'New Connection'}
+                </DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  {isEditMode
+                    ? `Updating "${connection?.name}"`
+                    : 'Connect to a ChromaDB instance'}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-          {/* Host */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Host *</label>
-            <input
-              {...register('host')}
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="localhost"
-            />
-            {errors.host && (
-              <p className="text-red-500 text-sm mt-1">{errors.host.message}</p>
-            )}
-          </div>
-
-          {/* Port */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Port *</label>
-            <input
-              {...register('port', { valueAsNumber: true })}
-              type="number"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="8000"
-            />
-            {errors.port && (
-              <p className="text-red-500 text-sm mt-1">{errors.port.message}</p>
-            )}
-          </div>
-
-          {/* Use SSL */}
-          <div className="flex items-center">
-            <input
-              {...register('useSSL')}
-              type="checkbox"
-              id="useSSL"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="useSSL" className="ml-2 text-sm font-medium">
-              Use SSL (HTTPS)
-            </label>
-          </div>
-
-          {/* Auth Type */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Authentication</label>
-            <select
-              {...register('authType')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="none">None</option>
-              <option value="token">Token</option>
-              <option value="basic">Basic (Username/Password)</option>
-            </select>
-          </div>
-
-          {/* Token (if authType is 'token') */}
-          {authType === 'token' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Token</label>
-              <input
-                {...register('token')}
-                type="password"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Your API token"
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Connection Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Connection Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="name"
+                {...register('name')}
+                placeholder="My ChromaDB"
+                className={errors.name ? 'border-destructive' : ''}
               />
-              {errors.token && (
-                <p className="text-red-500 text-sm mt-1">{errors.token.message}</p>
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name.message}</p>
               )}
             </div>
-          )}
 
-          {/* Username/Password (if authType is 'basic') */}
-          {authType === 'basic' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium mb-1">Username</label>
-                <input
-                  {...register('username')}
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Username"
+            {/* Host + Port in a row */}
+            <div className="grid grid-cols-[1fr_120px] gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="host" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Host <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="host"
+                  {...register('host')}
+                  placeholder="localhost"
+                  className={errors.host ? 'border-destructive' : ''}
                 />
-                {errors.username && (
-                  <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
+                {errors.host && (
+                  <p className="text-xs text-destructive">{errors.host.message}</p>
                 )}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Password</label>
-                <input
-                  {...register('password')}
-                  type="password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Password"
+              <div className="space-y-1.5">
+                <Label htmlFor="port" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Port <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="port"
+                  {...register('port', { valueAsNumber: true })}
+                  type="number"
+                  placeholder="8000"
+                  className={errors.port ? 'border-destructive' : ''}
                 />
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                {errors.port && (
+                  <p className="text-xs text-destructive">{errors.port.message}</p>
                 )}
               </div>
-            </>
-          )}
-
-          {/* Test Result */}
-          {testResult && (
-            <div
-              className={`p-3 rounded-md ${
-                testResult.success
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {testResult.message}
             </div>
-          )}
 
-          {/* Actions */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={isTesting}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
-            >
-              {isTesting ? 'Testing...' : 'Test Connection'}
-            </button>
-            <div className="space-x-2">
-              <button
+            {/* SSL Checkbox */}
+            <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 px-3 py-2.5">
+              <Checkbox
+                id="useSSL"
+                checked={watch('useSSL')}
+                onCheckedChange={(checked) => setValue('useSSL', !!checked)}
+              />
+              <div className="flex-1">
+                <label htmlFor="useSSL" className="text-sm font-medium cursor-pointer select-none">
+                  Use SSL (HTTPS)
+                </label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Enable for secure connections on port 443
+                </p>
+              </div>
+            </div>
+
+            {/* Auth Type */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Authentication
+              </Label>
+              <Select
+                value={authType}
+                onValueChange={(val) => setValue('authType', val as CreateConnectionRequest['authType'])}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="token">Token</SelectItem>
+                  <SelectItem value="basic">Basic (Username / Password)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Token */}
+            {authType === 'token' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="token" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  API Token
+                </Label>
+                <Input
+                  id="token"
+                  {...register('token')}
+                  type="password"
+                  placeholder="••••••••••••"
+                  className={errors.token ? 'border-destructive' : ''}
+                />
+                {errors.token && (
+                  <p className="text-xs text-destructive">{errors.token.message}</p>
+                )}
+              </div>
+            )}
+
+            {/* Basic Auth */}
+            {authType === 'basic' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="username" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Username
+                  </Label>
+                  <Input
+                    id="username"
+                    {...register('username')}
+                    placeholder="Username"
+                    className={errors.username ? 'border-destructive' : ''}
+                  />
+                  {errors.username && (
+                    <p className="text-xs text-destructive">{errors.username.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    {...register('password')}
+                    type="password"
+                    placeholder="••••••••"
+                    className={errors.password ? 'border-destructive' : ''}
+                  />
+                  {errors.password && (
+                    <p className="text-xs text-destructive">{errors.password.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Test Result */}
+            {testResult && (
+              <div
+                className={`flex items-start gap-2.5 rounded-md border p-3 text-sm ${
+                  testResult.success
+                    ? 'border-primary/20 bg-primary/5 text-primary'
+                    : 'border-destructive/20 bg-destructive/5 text-destructive'
+                }`}
+              >
+                {testResult.success
+                  ? <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  : <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                }
+                <span>{testResult.message}</span>
+              </div>
+            )}
+
+            {/* Footer Actions */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestConnection}
+                disabled={isTesting || isSubmitting}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                {isTesting
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <Wifi className="h-3.5 w-3.5" />
+                }
+                {isTesting ? 'Testing…' : 'Test'}
+              </Button>
+
+              <div className="flex-1" />
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md"
+                disabled={isSubmitting || isTesting}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50"
+                size="sm"
+                disabled={isSubmitting || isTesting}
+                className="min-w-[130px]"
               >
-                {isSubmitting ? 'Saving...' : isEditMode ? 'Update Connection' : 'Save Connection'}
-              </button>
+                {isSubmitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                {isSubmitting
+                  ? 'Saving…'
+                  : isEditMode
+                    ? 'Update Connection'
+                    : 'Save Connection'}
+              </Button>
             </div>
-          </div>
-        </form>
-      </div>
-    </div>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

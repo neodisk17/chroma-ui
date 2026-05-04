@@ -240,12 +240,21 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? `Edit Collection: ${collection.name}` : 'Create New Collection'}
+          <DialogTitle className="flex items-center gap-2">
+            {isEditMode ? (
+              <>
+                Edit Collection
+                <span className="font-mono text-sm font-normal text-primary bg-primary/10 border border-primary/20 rounded px-2 py-0.5 truncate max-w-[240px]">
+                  {collection.name}
+                </span>
+              </>
+            ) : (
+              'Create New Collection'
+            )}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? 'Update the collection metadata. Note: Collection name cannot be changed.'
+              ? 'Update metadata or change the embedding configuration.'
               : 'Create a new collection for storing documents and embeddings.'}
           </DialogDescription>
         </DialogHeader>
@@ -337,15 +346,15 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
 
           {/* Model Download Progress (shown during warmup) */}
           {isWarmingUp && (
-            <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300">
+            <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Download className="h-4 w-4 animate-pulse" />
                 Downloading embedding model...
               </div>
               {downloadProgress && (
                 <>
                   <Progress value={downloadProgress.percentage || 0} className="h-2" />
-                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                  <p className="text-xs text-primary/70">
                     {downloadProgress.percentage.toFixed(0)}% complete
                   </p>
                 </>
@@ -375,7 +384,14 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
 
           {/* Metadata */}
           <div className="space-y-2">
-            <Label htmlFor="metadata">Metadata (JSON)</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="metadata">Metadata (JSON)</Label>
+              {isEditMode && (
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                  Read-only
+                </span>
+              )}
+            </div>
             <Textarea
               id="metadata"
               {...metadataRest}
@@ -383,50 +399,53 @@ export function CollectionDialog({ open, onOpenChange, collection }: CollectionD
               readOnly={isEditMode}
               placeholder="{}"
               rows={4}
-              className={`font-mono text-xs ${isEditMode ? 'bg-muted text-muted-foreground cursor-default select-text' : ''} ${metadataError ? 'border-destructive' : ''}`}
+              className={`font-mono text-xs ${isEditMode ? 'bg-muted/50 text-muted-foreground cursor-default select-text resize-none' : ''} ${metadataError ? 'border-destructive' : ''}`}
             />
             {metadataError && (
               <p className="text-xs text-destructive">Invalid JSON: {metadataError}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {isEditMode
-                ? 'Collection metadata is read-only. Use the Update Embedding Configuration button below to change the embedding model.'
-                : 'Optional metadata to store with the collection (must be valid JSON)'}
-            </p>
+            {!isEditMode && (
+              <p className="text-xs text-muted-foreground">
+                Optional metadata to store with the collection (must be valid JSON)
+              </p>
+            )}
           </div>
 
           {/* Update Embedding Config (Edit mode only) */}
           {isEditMode && (
-            <div className="rounded-lg border p-4 space-y-3">
-              <div>
-                <p className="text-sm font-medium">Embedding Configuration</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {collection.metadata?.embedding_provider
-                    ? `Provider: ${collection.metadata.embedding_provider}${collection.metadata.embedding_model ? ` · Model: ${collection.metadata.embedding_model}` : ''}`
-                    : 'No embedding configuration stored on this collection.'}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const configStr = collection?.metadata?.embedding_config;
-                  if (configStr && typeof configStr === 'string') {
-                    try {
-                      loadConfig(JSON.parse(configStr));
-                    } catch {
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">Embedding Configuration</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {collection.metadata?.embedding_provider
+                      ? `${collection.metadata.embedding_provider}${collection.metadata.embedding_model ? ` · ${collection.metadata.embedding_model}` : ''}`
+                      : 'No embedding configuration stored'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-shrink-0 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50"
+                  onClick={() => {
+                    const configStr = collection?.metadata?.embedding_config;
+                    if (configStr && typeof configStr === 'string') {
+                      try {
+                        loadConfig(JSON.parse(configStr));
+                      } catch {
+                        resetToDefaults();
+                      }
+                    } else {
                       resetToDefaults();
                     }
-                  } else {
-                    resetToDefaults();
-                  }
-                  setIsEmbeddingConfigOpen(true);
-                }}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Update Embedding Configuration
-              </Button>
+                    setIsEmbeddingConfigOpen(true);
+                  }}
+                >
+                  <Settings className="mr-2 h-3.5 w-3.5" />
+                  Update
+                </Button>
+              </div>
             </div>
           )}
 

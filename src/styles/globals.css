@@ -4,65 +4,71 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light — cool slate with cyan accent */
+    --background: 210 25% 96%;        /* #F0F4F8 cool blue-gray */
+    --foreground: 215 28% 13%;        /* #1A2332 deep slate */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 28% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 28% 13%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* cyan-600 — deep for light bg contrast */
+    --primary: 196 90% 37%;            /* #0891B2 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 213 27% 90%;          /* light slate surface */
+    --secondary-foreground: 215 28% 13%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 213 27% 90%;
+    --muted-foreground: 215 16% 47%;   /* #64748B slate-500 */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 25% 92%;
+    --accent-foreground: 215 28% 13%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 213 20% 84%;
+    --input: 213 20% 84%;
+    --ring: 196 90% 37%;
 
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Deep slate — cyan precision */
+    --background: 215 28% 7%;          /* #0D1117 GitHub dark */
+    --foreground: 210 20% 94%;         /* #E6EDF3 */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 213 25% 11%;               /* #161B22 */
+    --card-foreground: 210 20% 94%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 213 25% 12%;
+    --popover-foreground: 210 20% 94%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* cyan-400 — #22D3EE */
+    --primary: 188 96% 54%;
+    --primary-foreground: 215 28% 7%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 26% 17%;          /* #1C2333 */
+    --secondary-foreground: 210 17% 82%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 215 25% 14%;
+    --muted-foreground: 210 12% 56%;   /* #8B949E */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 200 30% 14%;             /* subtle teal hover surface */
+    --accent-foreground: 210 20% 94%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 212 16% 20%;             /* #2D3748 */
+    --input: 212 16% 20%;
+    --ring: 188 96% 54%;
+
+    --radius: 0.5rem;
   }
 }
 
@@ -72,5 +78,29 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-orbitron {
+    font-family: 'Orbitron', 'Arial Black', sans-serif;
+  }
+  .font-rajdhani {
+    font-family: 'Rajdhani', 'Arial', sans-serif;
+  }
+  .text-gradient-brand {
+    background: linear-gradient(135deg, #22D3EE, #0EA5E9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  /* Dot grid — subtle slate tint, adapts to theme */
+  .dark .bg-dot-grid {
+    background-image: radial-gradient(circle, hsl(212 16% 20% / 0.9) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .bg-dot-grid {
+    background-image: radial-gradient(circle, hsl(213 20% 84% / 0.8) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 }

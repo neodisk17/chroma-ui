@@ -114,16 +114,19 @@ export const DocumentGrid = React.memo(function DocumentGrid({
       {
         headerName: 'Document',
         field: 'document',
-        width: 800,
+        width: 650,
+        minWidth: 300,
         cellRenderer: DocumentCellRenderer,
         resizable: true,
       },
       {
         headerName: 'Metadata',
         field: 'metadata',
-        width: 400,
+        width: 380,
+        minWidth: 200,
+        maxWidth: 600,
         cellRenderer: MetadataCellRenderer,
-        resizable: false,
+        resizable: true,
       },
       {
         headerName: 'Actions',

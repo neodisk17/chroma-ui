@@ -93,22 +93,29 @@ export function CollectionList({
   };
 
   return (
-    <div className="flex h-full flex-col border-r bg-background">
+    <div className="flex h-full flex-col border-r bg-card">
       {/* Header */}
-      <div className="border-b p-4">
+      <div className="border-b px-4 pt-4 pb-3">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Collections</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Collections</h2>
           <div className="flex gap-1">
             <Button
               size="icon"
               variant="ghost"
               onClick={() => refetch()}
               title="Refresh collections"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
-            <Button size="icon" onClick={onCreateCollection} title="Create collection">
-              <Plus className="h-4 w-4" />
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onCreateCollection}
+              title="Create collection"
+              className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+            >
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
@@ -182,30 +189,32 @@ export function CollectionList({
               {filteredCollections.map((collection) => (
                 <div
                   key={collection.name}
-                  className={`group relative flex cursor-pointer items-center justify-between rounded-md p-3 transition-colors hover:bg-accent ${
-                    selectedCollection === collection.name ? 'bg-accent' : ''
+                  className={`group relative flex cursor-pointer items-center justify-between rounded-md px-3 py-2.5 transition-colors hover:bg-accent ${
+                    selectedCollection === collection.name
+                      ? 'bg-primary/10 border-l-2 border-primary'
+                      : 'border-l-2 border-transparent'
                   }`}
                   onClick={() => handleCollectionClick(collection)}
                 >
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center gap-2">
-                      <FolderOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <p className="truncate text-sm font-medium">{collection.name}</p>
+                      <FolderOpen className={`h-4 w-4 flex-shrink-0 ${selectedCollection === collection.name ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <p className={`truncate text-sm font-medium ${selectedCollection === collection.name ? 'text-primary' : ''}`}>{collection.name}</p>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-0.5 pl-6 text-xs text-muted-foreground">
                       {collection.count ?? 0} documents
                     </p>
                     {/* Embedding Provider Indicator */}
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 pl-6 flex items-center gap-2">
                       {collection.metadata?.embedding_provider && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary/70">
                           {collection.metadata.embedding_provider === 'openai' ? 'OpenAI' :
                            collection.metadata.embedding_provider === 'huggingface' ? 'HuggingFace' :
                            'Embedding'}
                         </Badge>
                       )}
                       {!collection.metadata?.embedding_config && (
-                        <div className="flex items-center gap-1 text-[10px] text-amber-600">
+                        <div className="flex items-center gap-1 text-[10px] text-yellow-500">
                           <AlertCircle className="h-3 w-3" />
                           <span>No embedding config</span>
                         </div>

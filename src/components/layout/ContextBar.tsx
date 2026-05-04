@@ -49,8 +49,8 @@ export function ContextBar({ onNewConnection }: ContextBarProps) {
   // Don't render if no active connection
   if (!activeConnection) {
     return (
-      <div className="flex items-center justify-between px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700">
-        <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+      <div className="flex items-center justify-between px-4 py-2 bg-destructive/10 border-b border-destructive/30">
+        <div className="flex items-center gap-2 text-destructive-foreground">
           <Database className="h-4 w-4" />
           <span className="text-sm font-medium">No connection active</span>
         </div>
@@ -63,7 +63,7 @@ export function ContextBar({ onNewConnection }: ContextBarProps) {
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
+    <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/50 border-b border-border">
       {/* Left: Breadcrumb navigation */}
       <div className="flex items-center gap-1">
         {/* Connection Breadcrumb - Hidden on home page */}

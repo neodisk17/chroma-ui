@@ -1,12 +1,27 @@
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { Sun, Moon } from 'lucide-react';
 import { ContextBar } from './ContextBar';
+import { ChromaLogo } from '../ui/ChromaLogo';
+import { useConnectionStore } from '@/stores/connection-store';
+import { useTheme } from '@/hooks/use-theme';
 
-// Map routes to titles
-const routeTitles: Record<string, string> = {
-  '/': 'Home',
-  '/collections': 'Collections',
-  '/query': 'Query Builder',
-};
+function ThemeToggle({ theme, toggle }: { theme: 'dark' | 'light'; toggle: () => void }) {
+  return (
+    <button
+      onClick={toggle}
+      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+    >
+      {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
+
+const NAV_ITEMS: { to: string; label: string; onlyInsideCollection?: boolean }[] = [
+  { to: '/collections', label: 'Collections' },
+  { to: '/query', label: 'Query', onlyInsideCollection: true },
+];
 
 interface HeaderProps {
   onNewConnection: () => void;
@@ -14,41 +29,55 @@ interface HeaderProps {
 
 function Header({ onNewConnection }: HeaderProps) {
   const location = useLocation();
-
-  // Get the current page title based on the route
-  const getPageTitle = () => {
-    const path = location.pathname;
-    // Check for exact match
-    if (routeTitles[path]) {
-      return routeTitles[path];
-    }
-    // Check for dynamic routes (e.g., /collections/:id/documents)
-    if (path.includes('/documents')) {
-      return 'Documents';
-    }
-    return 'ChromaDB UI';
-  };
+  const { activeConnectionId } = useConnectionStore();
+  const { theme, toggle } = useTheme();
+  const isInsideCollection = /\/collections\/[^/]+/.test(location.pathname) || location.pathname.startsWith('/query');
 
   return (
-    <header className="border-b border-border bg-card">
-      <div className="h-16 flex items-center px-6">
-        <div className="flex items-center justify-between w-full">
-          {/* Page Title */}
-          <div>
-            <h2 className="text-2xl font-semibold">{getPageTitle()}</h2>
+    <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+      {activeConnectionId ? (
+        <div className="flex items-center justify-between px-4" style={{ height: '52px' }}>
+          <div className="flex items-center gap-3">
+            {/* Compact logo */}
+            <ChromaLogo compact className="h-8 w-8 flex-shrink-0" />
+
+            {/* Divider */}
+            <div className="h-5 w-px bg-border flex-shrink-0" />
+
+            {/* Navigation */}
+            <nav className="flex items-center gap-0.5">
+              {NAV_ITEMS.filter(({ onlyInsideCollection }) => !onlyInsideCollection || isInsideCollection).map(({ to, label }) => {
+                const isActive = location.pathname.startsWith(to);
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={[
+                      'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150',
+                      isActive
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
-          {/* Right side - Additional header items can be added here */}
-          <div className="flex items-center gap-4">
-            {/* Additional header items can be added here */}
-          </div>
+          <ThemeToggle theme={theme} toggle={toggle} />
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between px-6" style={{ height: '52px' }}>
+          <span className="text-sm font-medium text-muted-foreground tracking-wide uppercase">
+            Connections
+          </span>
+          <ThemeToggle theme={theme} toggle={toggle} />
+        </div>
+      )}
 
-      {/* Context Bar - replaces ConnectionStatus */}
-      <ContextBar
-        onNewConnection={onNewConnection}
-      />
+      <ContextBar onNewConnection={onNewConnection} />
     </header>
   );
 }

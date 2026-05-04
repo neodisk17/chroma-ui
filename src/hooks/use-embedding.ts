@@ -179,6 +179,7 @@ export function useModelDownloadProgress() {
   const { setDownloadProgress, clearDownloadProgress } = useEmbeddingStore();
 
   useEffect(() => {
+    if (!window.electronAPI?.onModelDownloadProgress) return;
     const cleanup = window.electronAPI.onModelDownloadProgress((progress: unknown) => {
       const p = progress as ModelDownloadProgress;
       if (p.status === 'complete' || p.status === 'error' || p.status === 'cancelled') {

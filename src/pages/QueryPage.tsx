@@ -39,22 +39,25 @@ function QueryPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Collection Selector Header */}
-      <div className="border-b p-4">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium">Collection:</label>
-          <Select value={selectedCollection} onValueChange={handleCollectionChange}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Select a collection" />
-            </SelectTrigger>
-            <SelectContent>
-              {collections?.map((collection) => (
-                <SelectItem key={collection.name} value={collection.name}>
-                  {collection.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="border-b border-border bg-card/40 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collection</span>
+        <Select value={selectedCollection} onValueChange={handleCollectionChange}>
+          <SelectTrigger className="w-[260px] h-8 text-sm">
+            <SelectValue placeholder="Select a collection…" />
+          </SelectTrigger>
+          <SelectContent>
+            {collections?.map((collection) => (
+              <SelectItem key={collection.name} value={collection.name}>
+                {collection.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedCollection && (
+          <span className="text-xs text-muted-foreground">
+            {collections?.find(c => c.name === selectedCollection)?.count ?? 0} documents
+          </span>
+        )}
       </div>
 
       {/* Query Builder */}
