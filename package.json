@@ -27,7 +27,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"electron/**/*.ts\" \"shared/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"electron/**/*.ts\" \"shared/**/*.ts\""
   },
   "keywords": [
     "chromadb",
