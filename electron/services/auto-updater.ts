@@ -141,11 +141,6 @@ export class AutoUpdaterService {
       this.installUpdate();
       return { success: true };
     });
-
-    ipcMain.handle(IPC_CHANNELS.UPDATE_SET_TOKEN, async (_event, token: string) => {
-      this.setGitHubToken(token);
-      return { success: true };
-    });
   }
 
   private sendToRenderer(channel: string, data: Record<string, unknown>): void {

@@ -39,7 +39,6 @@ export const IPC_CHANNELS = {
   UPDATE_CHECK: 'updater:check',
   UPDATE_DOWNLOAD: 'updater:download',
   UPDATE_INSTALL: 'updater:install',
-  UPDATE_SET_TOKEN: 'updater:set-token',
 
   // Embedding management channels
   EMBEDDING_SET_API_KEY: 'embedding:set-api-key',
