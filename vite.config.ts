@@ -16,7 +16,9 @@ const electronExternals = [
   '@chroma-core/default-embed',
   'onnxruntime-node',
   'sharp',
+  '@xenova/transformers',
 ];
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -35,7 +37,7 @@ export default defineConfig({
               external: electronExternals,
               output: {
                 format: 'cjs'
-              }
+              },
             }
           }
         }

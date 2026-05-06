@@ -1,6 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { WINDOW_CONFIG, IPC_CHANNELS } from '../shared/constants';
 import { PingRequestSchema } from '../shared/schemas';
 import type { IPCResponse, PongResponse } from '../shared/types';
@@ -11,9 +10,10 @@ import { autoUpdaterService } from './services/auto-updater';
 import { embeddingService } from './services/embedding-service';
 import { localModelService } from './services/local-model-service';
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Rolldown compiles this to CJS where __dirname is injected by the Node.js module wrapper.
+// Declaring it here (without assignment) tells TypeScript it exists without emitting JS,
+// which prevents Rolldown from introducing a naming conflict via variable renaming.
+declare const __dirname: string;
 
 // Suppress chromadb SDK's "No embedding function configuration found" warnings.
 // These are expected for collections created outside the JS SDK (e.g. Python client).
@@ -67,8 +67,6 @@ function createWindow(): void {
   if (isDev) {
     // In development, load from Vite dev server
     mainWindow.loadURL('http://localhost:3000');
-    // Open DevTools automatically in development
-    mainWindow.webContents.openDevTools();
   } else {
     // In production, load the built files
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
