@@ -21,9 +21,15 @@ files:
   - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
   - "!**/{appveyor.yml,.travis.yml,circle.yml}"
   - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
-  # Exclude browser WASM files — Electron main process uses onnxruntime-node, not onnxruntime-web
-  - "!**/onnxruntime-web/dist/ort-wasm*"
-  - "!**/node_modules/@xenova/transformers/dist/ort-wasm*"
+  # Exclude ORT WASM files from ALL packages — covers @xenova/transformers, @huggingface/transformers,
+  # onnxruntime-web, and any nested copies. Electron main process uses onnxruntime-node, never WASM.
+  - "!**/dist/ort-wasm*"
+  - "!**/dist/ort-training-wasm*"
+  # Sharp image processing library — not needed for text-only embeddings
+  - "!**/node_modules/sharp/**"
+  - "!**/node_modules/@img/**"
+  # Source maps are for debugging, not needed in production
+  - "!**/node_modules/**/*.map"
 
 # Externalized native modules that need rebuilding per platform
 extraMetadata:
@@ -72,9 +78,6 @@ win:
     - target: nsis
       arch:
         - x64
-    - target: portable
-      arch:
-        - x64
   icon: build/icon.ico
 
 nsis:
@@ -120,6 +123,9 @@ afterPack: build/afterPack.js
 # Native module rebuild
 nodeGypRebuild: false
 npmRebuild: true
+
+# Maximum compression for smaller artifacts (slower build but smaller output)
+compression: maximum
 
 # asar archive for faster loading
 asar: true
