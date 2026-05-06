@@ -115,7 +115,7 @@ appImage:
   artifactName: "${productName}-${version}-${arch}.${ext}"
 
 # Remove unused platform ONNX binaries after packing (saves ~140-200MB per artifact)
-afterPack: scripts/afterPack.js
+afterPack: build/afterPack.js
 
 # Native module rebuild
 nodeGypRebuild: false
