@@ -76,12 +76,13 @@ export default defineConfig({
     minify: isProduction ? 'esbuild' : false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-popover'],
-          'vendor-data': ['@tanstack/react-query', 'zustand', 'zod'],
-          'vendor-grid': ['ag-grid-community', 'ag-grid-react'],
-          'vendor-charts': ['recharts'],
+        manualChunks(id) {
+          if (!id.includes('/node_modules/')) return;
+          if (['react', 'react-dom', 'react-router-dom'].some(p => id.includes(`/node_modules/${p}/`))) return 'vendor-react';
+          if (id.includes('@radix-ui/')) return 'vendor-ui';
+          if (['@tanstack/react-query', 'zustand', 'zod'].some(p => id.includes(`/node_modules/${p}/`))) return 'vendor-data';
+          if (id.includes('ag-grid')) return 'vendor-grid';
+          if (id.includes('recharts')) return 'vendor-charts';
         }
       }
     },
