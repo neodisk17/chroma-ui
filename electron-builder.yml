@@ -21,6 +21,9 @@ files:
   - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
   - "!**/{appveyor.yml,.travis.yml,circle.yml}"
   - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+  # Exclude browser WASM files — Electron main process uses onnxruntime-node, not onnxruntime-web
+  - "!**/onnxruntime-web/dist/ort-wasm*"
+  - "!**/node_modules/@xenova/transformers/dist/ort-wasm*"
 
 # Externalized native modules that need rebuilding per platform
 extraMetadata:
@@ -110,6 +113,9 @@ deb:
 
 appImage:
   artifactName: "${productName}-${version}-${arch}.${ext}"
+
+# Remove unused platform ONNX binaries after packing (saves ~140-200MB per artifact)
+afterPack: scripts/afterPack.js
 
 # Native module rebuild
 nodeGypRebuild: false

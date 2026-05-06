@@ -28,11 +28,6 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"electron/**/*.ts\" \"shared/**/*.ts\"",
-    "icons:generate": "node scripts/generate-icons.js",
-    "script:create-collection": "ts-node scripts/create-collection.ts --name",
-    "script:add-documents": "ts-node scripts/add-documents.ts --collection 'text' --file data.json",
-    "script:generate-data": "ts-node scripts/generate-sample-data.ts --output data.json --count 100 --with-meta",
-    "script:example": "ts-node scripts/example-full-workflow.ts"
   },
   "keywords": [
     "chromadb",
