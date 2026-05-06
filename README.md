@@ -1,204 +1,163 @@
-# ChromaDB Desktop UI
+# ChromaDB UI
 
 A modern desktop application for managing ChromaDB collections and documents, built with Electron, React, and TypeScript.
 
-## Phase 1: Project Setup & Core Infrastructure ✅
+[![Build & Release](https://github.com/neodisk17/chroma-ui/actions/workflows/build.yml/badge.svg)](https://github.com/neodisk17/chroma-ui/actions/workflows/build.yml)
 
-**Status**: Complete
-**Completed**: 2026-01-07
+---
 
-### What's Implemented
+## Download
 
-Phase 1 has been successfully completed with the following features:
+Pre-built installers are published to the [Releases page](https://github.com/neodisk17/chroma-ui/releases/latest) for every version tag. Files on the Releases page are permanent and publicly downloadable — no account or store required.
 
-#### 1. **Project Structure**
-- ✅ Electron + React + TypeScript setup with Vite
-- ✅ Clean separation: `electron/` (main process), `src/` (renderer), `shared/` (types)
-- ✅ TypeScript strict mode enabled for maximum type safety
-- ✅ Absolute imports configured (`@/` for src, `@shared/` for shared)
+| Platform | File | Architecture |
+|----------|------|--------------|
+| macOS | `.dmg` installer | x64, arm64 (Apple Silicon) |
+| macOS | `.zip` archive (for auto-updater) | x64, arm64 (Apple Silicon) |
+| Windows | NSIS `.exe` installer | x64 |
+| Windows | Portable `.exe` (no install needed) | x64 |
+| Linux | `.AppImage` (run anywhere) | x64 |
+| Linux | `.deb` package (Debian/Ubuntu) | x64 |
 
-#### 2. **Styling & UI**
-- ✅ TailwindCSS with PostCSS configured
-- ✅ Shadcn/ui design system foundation
-- ✅ Dark mode support (CSS variables ready)
-- ✅ Responsive layout with sidebar and header
+**[Download the latest release →](https://github.com/neodisk17/chroma-ui/releases/latest)**
 
-#### 3. **Code Quality**
-- ✅ ESLint with TypeScript and React rules
-- ✅ Prettier configured for consistent formatting
-- ✅ No TypeScript errors or ESLint warnings
+---
 
-#### 4. **Security & IPC**
-- ✅ Context isolation enabled
-- ✅ Node integration disabled in renderer
-- ✅ Type-safe IPC communication with Zod validation
-- ✅ Preload script with contextBridge
-- ✅ Content Security Policy configured
+## Features
 
-#### 5. **Core Features**
-- ✅ Main window with proper lifecycle management
-- ✅ React Router v6 for navigation
-- ✅ Basic layout: Sidebar + Header + Content area
-- ✅ IPC ping/pong test implemented and working
-- ✅ Hot module reload functional
+- **Connection management** — save and switch between multiple ChromaDB server profiles
+- **Collection browser** — create, rename, and delete collections
+- **Document explorer** — view, search, filter, and edit documents with metadata
+- **Query builder** — run similarity and filter queries with visual results
+- **Embedding configuration** — configure global and per-collection embedding models
+- **Dark / light theme** — persisted theme preference with flash-free init
 
-## Project Structure
+---
 
-```
-chroma-ui/
-├── electron/                 # Main process (Node.js)
-│   ├── main.ts              # Electron main entry, window management
-│   └── preload.ts           # Context bridge for secure IPC
-├── src/                     # Renderer process (React)
-│   ├── components/
-│   │   └── layout/          # Layout components
-│   │       ├── MainLayout.tsx
-│   │       ├── Sidebar.tsx
-│   │       └── Header.tsx
-│   ├── pages/               # Route pages
-│   │   ├── HomePage.tsx     # Includes IPC test
-│   │   ├── CollectionsPage.tsx
-│   │   ├── DocumentsPage.tsx
-│   │   └── QueryPage.tsx
-│   ├── lib/
-│   │   └── utils.ts         # Utility functions (cn)
-│   ├── styles/
-│   │   └── globals.css      # TailwindCSS + theme variables
-│   ├── types/
-│   │   └── electron.d.ts    # TypeScript declarations
-│   ├── App.tsx              # React Router setup
-│   └── main.tsx             # React entry point
-├── shared/                  # Shared between main and renderer
-│   ├── constants.ts         # IPC channels, app constants
-│   ├── types.ts             # TypeScript interfaces
-│   └── schemas.ts           # Zod validation schemas
-├── index.html               # HTML entry point
-├── vite.config.ts           # Vite + Electron plugin config
-├── tsconfig.json            # TypeScript config (renderer)
-├── tsconfig.node.json       # TypeScript config (main)
-├── tailwind.config.js       # TailwindCSS configuration
-├── postcss.config.js        # PostCSS configuration
-├── .eslintrc.json           # ESLint configuration
-├── .prettierrc              # Prettier configuration
-└── package.json             # Dependencies and scripts
-```
+## Tech Stack
 
-## Getting Started
+| Layer | Technology |
+|-------|-----------|
+| Desktop shell | Electron 28 |
+| UI framework | React 18 + TypeScript 5 |
+| Build tool | Vite 5 |
+| Styling | TailwindCSS 3 + shadcn/ui |
+| Routing | React Router 6 |
+| Validation | Zod |
+| Embeddings | @xenova/transformers |
+| Packaging | electron-builder |
+
+---
+
+## Development
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- macOS, Windows, or Linux
+- Node.js 18+
+- npm
 
-### Installation
-
-Dependencies are already installed. If you need to reinstall:
+### Install
 
 ```bash
 npm install
 ```
 
-### Development
-
-Start the development server with hot reload:
+### Run in development mode
 
 ```bash
 npm run dev
 ```
 
-This will:
-1. Start the Vite dev server on http://localhost:3000
-2. Build and watch Electron main and preload scripts
-3. Launch the Electron app with DevTools open
-4. Enable hot module reload for React components
+Starts the Vite dev server on `http://localhost:3000`, compiles the Electron main/preload scripts, and launches the app with hot reload.
 
-### Available Scripts
+### Available scripts
 
 ```bash
-npm run dev         # Start development mode
-npm run build       # Build for production
-npm run typecheck   # Run TypeScript type checking
-npm run lint        # Run ESLint
-npm run format      # Format code with Prettier
+npm run dev              # Start with hot reload
+npm run build            # Compile TypeScript + Vite bundle
+npm run build:mac        # Package for macOS (dmg + zip)
+npm run build:win        # Package for Windows (nsis + portable)
+npm run build:linux      # Package for Linux (AppImage + deb)
+npm run build:all        # Package for all platforms (requires native tools)
+npm run typecheck        # TypeScript type check
+npm run lint             # ESLint
+npm run test             # Run tests (vitest)
+npm run test:coverage    # Run tests with coverage report
 ```
 
-## Testing Phase 1
+### Cross-platform builds (local)
 
-The app should now be running. You can verify Phase 1 completion by:
+Windows and Linux installers can be built from any OS using Docker:
 
-### ✅ Verification Checklist
+```bash
+# Windows installer
+npm run build:docker:win
 
-1. **App Launches**: Electron window opens successfully
-2. **Layout Renders**: Sidebar, header, and main content area visible
-3. **Navigation Works**: Click sidebar items to navigate between pages
-4. **IPC Communication**:
-   - Go to Home page
-   - Click "Send Ping" button
-   - Should receive "Pong! Received: Hello from renderer!" response
-5. **Hot Reload**:
-   - Edit any React component (e.g., change text in HomePage.tsx)
-   - App should automatically reload with changes
-6. **TypeScript**: Run `npm run typecheck` - should pass with no errors
-7. **Linting**: Run `npm run lint` - should pass with no warnings
-8. **Developer Tools**: DevTools should be open in development mode
+# Linux packages
+npm run build:docker:linux
 
-### Expected Behavior
+# Both
+npm run build:docker:all
+```
 
-- **Window Size**: 1280x800 (minimum 1024x768)
-- **Sidebar**: Shows Home, Collections, and Query navigation items
-- **Header**: Shows current page title and "Not Connected" status
-- **Home Page**: Shows welcome message and IPC test button
-- **Security**: Context isolation enabled, Node.js integration disabled
+The Docker image (`docker/Dockerfile.build`) uses [`electronuserland/builder:wine`](https://github.com/electron-userland/electron-builder-image) which includes Wine for cross-compiling Windows targets.
 
-## Security Features
+---
 
-Phase 1 implements Electron security best practices:
+## CI/CD
 
-- ✅ **Context Isolation**: Enabled to prevent renderer access to Node.js
-- ✅ **Node Integration**: Disabled in renderer process
-- ✅ **Preload Script**: Uses contextBridge for safe IPC communication
-- ✅ **Content Security Policy**: Basic CSP configured in index.html
-- ✅ **IPC Validation**: Zod schemas validate all IPC messages
-- ✅ **Navigation Protection**: Prevents navigation to external URLs
-- ✅ **Window Control**: Prevents opening new windows
+The GitHub Actions pipeline (`.github/workflows/build.yml`) builds all three platforms in parallel using native runners:
 
-## Next Steps: Phase 2
+| Job | Runner | Outputs |
+|-----|--------|---------|
+| `build-macos` | `macos-latest` | `.dmg`, `.zip` (x64 + arm64) |
+| `build-windows` | `windows-latest` | NSIS `.exe`, portable `.exe` (x64) |
+| `build-linux` | `ubuntu-latest` | `.AppImage`, `.deb` (x64) |
 
-Phase 2 will implement Connection Management:
-- ChromaDB connection profiles
-- Secure credential storage (OS keychain)
-- Connection testing and switching
-- Connection pool management
+**Triggers:**
+- Push a tag `v*.*.*` → builds all platforms, creates a **permanent GitHub Release** with all installers as downloadable assets
+- `workflow_dispatch` → builds all platforms on demand; artifacts are available in the Actions run for 30 days (useful for testing builds before tagging a release)
 
-See `TODO.md` for detailed Phase 2 requirements.
+No other branches trigger builds, keeping CI minutes usage minimal.
 
-## Technology Stack
+---
 
-- **Electron**: ^28.1.0 - Desktop app framework
-- **React**: ^18.2.0 - UI library
-- **TypeScript**: ^5.3.3 - Type safety
-- **Vite**: ^5.0.10 - Build tool
-- **TailwindCSS**: ^3.4.0 - Styling
-- **React Router**: ^6.21.1 - Client-side routing
-- **Zod**: ^3.22.4 - Runtime validation
-- **vite-plugin-electron**: ^0.28.2 - Electron integration
+## Project Structure
 
-## Contributing
+```
+chroma-ui/
+├── .github/workflows/    # CI/CD pipeline
+├── electron/             # Main process (Node.js)
+│   ├── main.ts
+│   ├── preload.ts
+│   └── services/         # IPC handlers, auto-updater, embedding services
+├── src/                  # Renderer process (React)
+│   ├── components/       # Shared UI components
+│   ├── pages/            # Route pages (Home, Collections, Documents, Query)
+│   ├── hooks/            # Custom React hooks
+│   └── styles/           # TailwindCSS globals and theme tokens
+├── shared/               # Types and constants shared between main and renderer
+├── public/               # Static assets (favicon.svg, icons)
+├── build/                # Electron-builder icon assets (icns, ico, png)
+├── docker/
+│   └── Dockerfile.build  # Cross-platform build image (Wine)
+├── docker-compose.yml    # Local cross-platform build services
+├── electron-builder.yml  # Packaging configuration
+└── vite.config.ts        # Vite + Electron plugin config
+```
 
-This project follows strict TypeScript and ESLint rules:
-- TypeScript strict mode enabled
-- No `any` types allowed
-- All React hooks rules enforced
-- Prettier for consistent formatting
+---
 
-Run `npm run lint` and `npm run typecheck` before committing.
+## Security
+
+- **Context isolation** enabled — renderer has no direct Node.js access
+- **Node integration** disabled in renderer
+- **contextBridge** with typed IPC channels for all main ↔ renderer communication
+- **Zod validation** on all IPC messages
+- **Content Security Policy** configured in `index.html`
+
+---
 
 ## License
 
 MIT
-
----
-
-**Phase 1 Complete!** 🎉
-
-The foundation is now ready. All core infrastructure is in place, and the app is ready for Phase 2 development.
