@@ -120,7 +120,7 @@ export function EmbeddingConfigPanel({ onConfigChange, collectionName }: Embeddi
         </Select>
         <p className="text-xs text-muted-foreground">
           {selectedProvider === 'local' &&
-            'Uses local transformer models via @chroma-core/default-embed'}
+            'Uses local transformer models via @huggingface/transformers'}
           {selectedProvider === 'openai' && 'Uses OpenAI embedding API (requires API key)'}
           {selectedProvider === 'huggingface' &&
             'Uses HuggingFace transformer models (downloaded locally)'}

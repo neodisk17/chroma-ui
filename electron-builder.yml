@@ -21,13 +21,9 @@ files:
   - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
   - "!**/{appveyor.yml,.travis.yml,circle.yml}"
   - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
-  # Exclude ORT WASM files from ALL packages — covers @xenova/transformers, @huggingface/transformers,
-  # onnxruntime-web, and any nested copies. Electron main process uses onnxruntime-node, never WASM.
+  # Exclude ORT WASM files — Electron main process uses onnxruntime-node, never WASM.
   - "!**/dist/ort-wasm*"
   - "!**/dist/ort-training-wasm*"
-  # Sharp image processing library — not needed for text-only embeddings
-  - "!**/node_modules/sharp/**"
-  - "!**/node_modules/@img/**"
   # Source maps are for debugging, not needed in production
   - "!**/node_modules/**/*.map"
 
@@ -133,4 +129,4 @@ asarUnpack:
   - "**/*.node"
   - "**/node_modules/keytar/**"
   - "**/node_modules/onnxruntime-node/**"
-  - "**/node_modules/@chroma-core/default-embed/**"
+  - "**/node_modules/@huggingface/transformers/**"

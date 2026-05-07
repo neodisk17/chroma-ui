@@ -69,11 +69,13 @@ function initCacheDir(): void {
 }
 
 function checkModelIntegrity(modelId: string): boolean {
-  // @xenova/transformers v2 stores model as: cacheDir/org/repo/config.json
-  const parts = modelId.split('/');
-  const modelDir = path.join(getModelCacheDir(), ...parts);
-  const configPath = path.join(modelDir, 'config.json');
-  return fs.existsSync(configPath);
+  // @huggingface/transformers v3 stores models as: cacheDir/models--org--repo/snapshots/<hash>/config.json
+  const cacheKey = `models--${modelId.replace('/', '--')}`;
+  const snapshotsDir = path.join(getModelCacheDir(), cacheKey, 'snapshots');
+  if (!fs.existsSync(snapshotsDir)) return false;
+  return fs.readdirSync(snapshotsDir).some((hash) =>
+    fs.existsSync(path.join(snapshotsDir, hash, 'config.json'))
+  );
 }
 
 async function listAvailableModels(): Promise<AvailableModel[]> {
@@ -88,7 +90,7 @@ async function downloadModel(
   progressCallback: ModelProgressCallback
 ): Promise<void> {
   // Dynamic import to avoid loading transformers at module init time
-  const { pipeline, env } = await import('@xenova/transformers');
+  const { pipeline, env } = await import('@huggingface/transformers');
 
   initCacheDir();
   env.cacheDir = getModelCacheDir();
@@ -133,30 +135,7 @@ async function createLocalEmbeddingFunction(
   modelId: string,
   dtype: DType = 'fp32'
 ): Promise<EmbeddingFunction> {
-  const { pipeline, env, Tensor } = await import('@xenova/transformers');
-
-  if (!Object.getOwnPropertyDescriptor(Tensor.prototype, 'location')) {
-    Object.defineProperty(Tensor.prototype, 'location', {
-      get() { return (this as { dataLocation?: string }).dataLocation ?? 'cpu'; },
-      configurable: true,
-    });
-  }
-  if (!Object.getOwnPropertyDescriptor(Tensor.prototype, 'cpuData')) {
-    Object.defineProperty(Tensor.prototype, 'cpuData', {
-      set(value: unknown) {
-        // Promote to a plain own property so this setter won't fire again
-        Object.defineProperty(this, 'cpuData', {
-          value, writable: true, configurable: true, enumerable: true,
-        });
-        // Mirror into `data` (overwriting the undefined class-field initializer)
-        Object.defineProperty(this, 'data', {
-          value, writable: true, configurable: true, enumerable: true,
-        });
-      },
-      configurable: true,
-      enumerable: false,
-    });
-  }
+  const { pipeline, env } = await import('@huggingface/transformers');
 
   initCacheDir();
   env.cacheDir = getModelCacheDir();

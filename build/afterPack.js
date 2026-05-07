@@ -4,9 +4,6 @@ const fs = require('fs')
 /**
  * Removes native ONNX runtime binaries for platforms other than the one being built.
  * Runs after electron-builder packs the app (before signing/installer creation).
- *
- * Both the top-level onnxruntime-node and the nested copy inside @xenova/transformers
- * are fully unpacked via asarUnpack, so both can be cleaned here.
  */
 exports.default = async function ({ appOutDir, electronPlatformName }) {
   const exclude = {
@@ -26,15 +23,6 @@ exports.default = async function ({ appOutDir, electronPlatformName }) {
 
   const onnxRoots = [
     path.join(unpackedModules, 'onnxruntime-node', 'bin', 'napi-v3'),
-    path.join(
-      unpackedModules,
-      '@xenova',
-      'transformers',
-      'node_modules',
-      'onnxruntime-node',
-      'bin',
-      'napi-v3'
-    ),
   ]
 
   let totalRemoved = 0

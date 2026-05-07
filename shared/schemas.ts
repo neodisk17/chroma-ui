@@ -345,7 +345,7 @@ export type BulkImportResponse = z.infer<typeof BulkImportResponseSchema>;
 // Embedding Configuration Schemas
 // ============================================================================
 
-// Embedding Provider Enum (includes 'local' for @xenova/transformers)
+// Embedding Provider Enum (includes 'local' for @huggingface/transformers)
 export const EmbeddingProviderSchema = z.enum(['local', 'openai', 'huggingface', 'ollama']);
 export type EmbeddingProvider = z.infer<typeof EmbeddingProviderSchema>;
 
@@ -353,7 +353,7 @@ export type EmbeddingProvider = z.infer<typeof EmbeddingProviderSchema>;
 export const DTypeSchema = z.enum(['fp32', 'fp16', 'q8', 'int8']);
 export type DType = z.infer<typeof DTypeSchema>;
 
-// Local Embedding Config (uses @xenova/transformers locally)
+// Local Embedding Config (uses @huggingface/transformers locally)
 export const LocalEmbeddingConfigSchema = z.object({
   provider: z.literal('local'),
   model: z.string().min(1).default('Xenova/all-MiniLM-L6-v2'),
