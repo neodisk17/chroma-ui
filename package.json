@@ -93,8 +93,8 @@
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",
     "@vitejs/plugin-react": "^4.2.1",
-    "@vitest/coverage-istanbul": "^4.0.18",
-    "@vitest/ui": "^4.0.18",
+    "@vitest/coverage-istanbul": "^4.1.8",
+    "@vitest/ui": "^4.1.8",
     "autoprefixer": "^10.4.16",
     "cross-env": "^10.1.0",
     "electron": "^40.9.3",
@@ -112,6 +112,6 @@
     "vite": "^8.0.10",
     "vite-plugin-electron": "^0.28.2",
     "vite-plugin-electron-renderer": "^0.14.5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.8"
   }
 }
